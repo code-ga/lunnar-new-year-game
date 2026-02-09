@@ -1,0 +1,9 @@
+.env
+.env.local
+node_modules/
+bun.lockb
+dist/
+bun.sqlite
+drizzle/
+.DS_Store
+dev-db
