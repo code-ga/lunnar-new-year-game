@@ -1,10 +1,15 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../../database";
-import { user, session, account, verification } from "../../database/schema";
+import {
+	user,
+	session,
+	account,
+	verification,
+	profile,
+} from "../../database/schema";
 import { openAPI } from "better-auth/plugins";
 import { FRONTEND_URLs } from "../../constants";
-
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: "pg",
@@ -38,4 +43,26 @@ export const auth = betterAuth({
 	},
 	secret: process.env.BETTER_AUTH_SECRET!,
 	plugins: [openAPI()],
+	databaseHooks: {
+		user: {
+			create: {
+				after: async (user, context) => {
+					await db.insert(profile).values({
+						userId: user.id,
+						username: user.name,
+					});
+				},
+			},
+		},
+	},
+	advanced: {
+		cookies: {
+			state: {
+				attributes: {
+					sameSite: process.env.NODE_ENV === "production" ? "None" : "lax",
+					secure: process.env.NODE_ENV === "production",
+				},
+			},
+		},
+	},
 });

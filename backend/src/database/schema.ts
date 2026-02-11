@@ -3,6 +3,7 @@
 import { defineRelations } from "drizzle-orm";
 import {
 	boolean,
+	integer,
 	jsonb,
 	pgEnum,
 	pgTable,
@@ -70,14 +71,7 @@ export const verification = pgTable("verification", {
 		.$onUpdate(() => /* @__PURE__ */ new Date())
 		.notNull(),
 });
-export const permissionEnum = pgEnum("permission", [
-	"user",
-	"listener",
-	"psychologist",
-	"therapist",
-	"manager",
-	"admin",
-]);
+export const permissionEnum = pgEnum("permission", ["user", "admin"]);
 export const profile = pgTable("profile", {
 	id: text("id")
 		.primaryKey()
@@ -90,7 +84,7 @@ export const profile = pgTable("profile", {
 
 	username: text("username").notNull(),
 	permission: permissionEnum("permission").array().default(["user"]).notNull(),
-	coins: serial("coins").default(0).notNull(),
+	coins: integer("coins").default(0).notNull(),
 	lastCheckIn: timestamp("last_check_in"),
 
 	updatedAt: timestamp("updated_at")
@@ -121,11 +115,15 @@ export const userItems = pgTable("user_items", {
 	itemId: serial("item_id")
 		.notNull()
 		.references(() => items.id, { onDelete: "cascade" }),
-	quantity: serial("quantity").default(1).notNull(),
+	quantity: integer("quantity").default(1).notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const orderStatusEnum = pgEnum("order_status", ["pending", "shipped", "rejected"]);
+export const orderStatusEnum = pgEnum("order_status", [
+	"pending",
+	"shipped",
+	"rejected",
+]);
 
 export const orders = pgTable("orders", {
 	id: serial("id").primaryKey(),

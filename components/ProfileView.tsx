@@ -1,103 +1,123 @@
+import React from "react";
+import {
+	User,
+	LogOut,
+	Cloud,
+	Info,
+	CheckCircle2,
+	Coins,
+	Calendar,
+} from "lucide-react";
+import { useGameStore } from "../store/useGameStore";
 
-import React, { useEffect, useState } from 'react';
-import { User, LogIn, Cloud, CloudOff, Info, CheckCircle2 } from 'lucide-react';
-import { initTokenClient } from '../lib/googleDrive';
+const ProfileView: React.FC = () => {
+	const { user } = useGameStore();
 
-interface ProfileViewProps {
-  onLogin: (token: string) => void;
-  isLoggedIn: boolean;
-  syncStatus: 'off' | 'syncing' | 'synced';
-}
+	const handleLogout = () => {
+		window.location.href = "/api/auth/sign-out"; // Better-auth endpoint
+	};
 
-const ProfileView: React.FC<ProfileViewProps> = ({ onLogin, isLoggedIn, syncStatus }) => {
-  const [tokenClient, setTokenClient] = useState<any>(null);
+	if (!user) {
+		return (
+			<div className="p-6 h-full flex flex-col items-center justify-center max-w-md mx-auto">
+				<div className="text-center space-y-4">
+					<div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+						<User size={40} className="text-slate-300" />
+					</div>
+					<h2 className="text-xl font-bold">Chưa Đăng Nhập</h2>
+					<button
+						onClick={() => (window.location.href = "/login")}
+						className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold"
+					>
+						ĐẾN TRANG ĐĂNG NHẬP
+					</button>
+				</div>
+			</div>
+		);
+	}
 
-  useEffect(() => {
-    // Initialize token client on component mount
-    const client = initTokenClient(onLogin);
-    setTokenClient(client);
-  }, [onLogin]);
+	return (
+		<div className="p-6 h-full flex flex-col items-center justify-center max-w-md mx-auto">
+			<div className="w-full bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100 relative overflow-hidden">
+				<div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 -z-10 opacity-60"></div>
 
-  const handleGoogleLogin = () => {
-    if (tokenClient) {
-      tokenClient.requestAccessToken();
-    }
-  };
+				<div className="text-center mb-10">
+					<div className="w-24 h-24 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-6 shadow-inner ring-8 ring-green-50">
+						<CheckCircle2 size={48} />
+					</div>
+					<h2 className="text-3xl font-black text-slate-800 tracking-tight">
+						{user.username}
+					</h2>
+					<p className="text-slate-400 text-sm font-medium mt-1 uppercase tracking-widest text-[10px]">
+						Tài khoản đã xác thực
+					</p>
+				</div>
 
-  return (
-    <div className="p-6 h-full flex flex-col items-center justify-center max-w-md mx-auto">
-      <div className="w-full bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 -z-10 opacity-60"></div>
-        
-        <div className="text-center mb-10">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-8 ${isLoggedIn ? 'bg-green-100 text-green-600 ring-green-50' : 'bg-indigo-100 text-indigo-600 ring-indigo-50'}`}>
-                {isLoggedIn ? <CheckCircle2 size={48} /> : <User size={48} className="fill-indigo-100" />}
-            </div>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tight">
-              {isLoggedIn ? 'Đã Kết Nối' : 'Cloud Save'}
-            </h2>
-            <p className="text-slate-400 text-sm font-medium mt-1 uppercase tracking-widest text-[10px]">
-              {isLoggedIn ? 'Dữ liệu được bảo vệ bởi Google' : 'Lưu trữ gối ôm lên đám mây'}
-            </p>
-        </div>
+				<div className="space-y-4">
+					<div className="flex items-center justify-between p-4 bg-yellow-50 rounded-2xl border border-yellow-100 shadow-sm transition-transform hover:scale-[1.02]">
+						<div className="flex items-center gap-3">
+							<div className="p-2 bg-yellow-400 rounded-xl text-white shadow-lg shadow-yellow-200">
+								<Coins size={20} />
+							</div>
+							<div>
+								<p className="text-[10px] uppercase font-black text-yellow-600 tracking-tight">
+									Số dư hiện tại
+								</p>
+								<p className="text-lg font-black text-slate-800">
+									{user.coins.toLocaleString()} Xu
+								</p>
+							</div>
+						</div>
+					</div>
 
-        <div className="space-y-6">
-          {!isLoggedIn ? (
-            <>
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
-                <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
-                  Đăng nhập bằng Google Drive giúp bạn lưu trữ bộ sưu tập gối ôm vĩnh viễn và có thể chơi trên nhiều thiết bị khác nhau.
-                </p>
-              </div>
+					<div className="flex items-center justify-between p-4 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm transition-transform hover:scale-[1.02]">
+						<div className="flex items-center gap-3">
+							<div className="p-2 bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-200">
+								<Calendar size={20} />
+							</div>
+							<div>
+								<p className="text-[10px] uppercase font-black text-indigo-600 tracking-tight">
+									Lần cuối điểm danh
+								</p>
+								<p className="text-sm font-bold text-slate-700">
+									{user.lastCheckIn
+										? new Date(user.lastCheckIn).toLocaleDateString("vi-VN")
+										: "Chưa điểm danh"}
+								</p>
+							</div>
+						</div>
+					</div>
 
-              <button 
-                onClick={handleGoogleLogin}
-                className="w-full py-5 bg-white border-2 border-slate-100 text-slate-700 font-black rounded-2xl shadow-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-3 active:scale-95"
-              >
-                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" className="w-6 h-6" alt="G" />
-                ĐĂNG NHẬP GOOGLE
-              </button>
-            </>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl ${syncStatus === 'syncing' ? 'bg-indigo-100 text-indigo-600' : 'bg-green-100 text-green-600'}`}>
-                    <Cloud size={24} className={syncStatus === 'syncing' ? 'animate-bounce' : ''} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Trạng thái Cloud</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                      {syncStatus === 'syncing' ? 'Đang tải dữ liệu...' : 'Đã đồng bộ Drive'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => window.location.reload()}
-                className="w-full py-4 bg-slate-100 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-200 transition-colors"
-              >
-                ĐĂNG XUẤT (Tải lại trang)
-              </button>
-            </div>
-          )}
-        </div>
+					<div className="pt-6">
+						<button
+							onClick={handleLogout}
+							className="w-full py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center gap-3 group"
+						>
+							<LogOut
+								size={18}
+								className="group-hover:-translate-x-1 transition-transform"
+							/>
+							ĐĂNG XUẤT
+						</button>
+					</div>
+				</div>
 
-        <div className="mt-8 text-center">
-            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest px-4">
-              Chúng tôi không lưu mật khẩu của bạn. Dữ liệu gối ôm được lưu vào thư mục AppData ẩn trên Google Drive cá nhân.
-            </p>
-        </div>
-      </div>
+				<div className="mt-10 p-4 bg-blue-50/50 rounded-2xl flex items-start gap-3 border border-blue-50">
+					<Info size={16} className="text-blue-400 shrink-0 mt-0.5" />
+					<p className="text-[10px] text-blue-500 font-bold uppercase tracking-wide leading-relaxed">
+						Dữ liệu của bạn hiện đã được bảo mật trong hệ thống database mới.
+					</p>
+				</div>
+			</div>
 
-      <div className="mt-8 flex items-center gap-2 text-slate-400">
-        <Cloud size={14} />
-        <span className="text-xs font-bold uppercase tracking-widest">Powered by Google Drive API</span>
-      </div>
-    </div>
-  );
+			<div className="mt-8 flex items-center gap-2 text-slate-300">
+				<Cloud size={14} />
+				<span className="text-[10px] font-black uppercase tracking-widest">
+					Database Sync Active
+				</span>
+			</div>
+		</div>
+	);
 };
 
 export default ProfileView;
