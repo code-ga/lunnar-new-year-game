@@ -1,5 +1,5 @@
-import React from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Outlet, Link, useLocation } from "react-router";
 import {
 	Sparkles,
 	Library,
@@ -12,9 +12,12 @@ import {
 import { useGameStore } from "../store/useGameStore";
 
 const MainLayout: React.FC = () => {
-	const { user } = useGameStore();
+	const { user, fetchUserData } = useGameStore();
 	const location = useLocation();
 
+	useEffect(() => {
+		fetchUserData();
+	}, []);
 	const navItems = [
 		{ id: "gacha", label: "Gacha", icon: Sparkles, path: "/" },
 		{ id: "collection", label: "Túi Đồ", icon: Library, path: "/collection" },

@@ -64,7 +64,8 @@ const BauCuaGame: React.FC = () => {
 			<div className="grid grid-cols-3 gap-3 w-full max-w-sm">
 				{SYMBOLS.map((s, i) => (
 					<button
-						key={i}
+						type="button"
+						key={s}
 						onClick={() => placeBet(i)}
 						className="aspect-square bg-white border-4 border-slate-100 rounded-2xl flex flex-col items-center justify-center transition hover:border-indigo-200 active:scale-95 shadow-sm relative overflow-hidden group"
 					>
@@ -93,12 +94,14 @@ const BauCuaGame: React.FC = () => {
 
 			<div className="flex gap-3 w-full max-w-sm">
 				<button
+					type="button"
 					onClick={clearBets}
 					className="flex-1 py-3 bg-slate-200 text-slate-600 font-bold rounded-xl active:scale-95 transition-transform"
 				>
 					XÓA CƯỢC
 				</button>
 				<button
+					type="button"
 					onClick={play}
 					disabled={isRolling || totalBetSize === 0}
 					className="flex-3 py-3 px-8 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-200 active:scale-95 transition-transform disabled:opacity-50"

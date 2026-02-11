@@ -13,6 +13,7 @@ const LoginPage: React.FC = () => {
 		setIsLoading(provider);
 		setError(null);
 		try {
+			console.log("Logging in with", provider);
 			await authClient.signIn.social({
 				provider,
 				callbackURL: LOGIN_REDIRECT_URL,
@@ -47,6 +48,7 @@ const LoginPage: React.FC = () => {
 					<div className="px-10 pb-12 space-y-4">
 						<button
 							onClick={() => handleSocialLogin("google")}
+							type="button"
 							disabled={!!isLoading}
 							className="w-full h-14 bg-white hover:bg-slate-100 text-slate-900 font-black rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:active:scale-100"
 						>
@@ -58,6 +60,7 @@ const LoginPage: React.FC = () => {
 										className="w-5 h-5 group-hover:scale-110 transition-transform"
 										viewBox="0 0 48 48"
 									>
+										<title>Google</title>
 										<path
 											fill="#EA4335"
 											d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -84,6 +87,7 @@ const LoginPage: React.FC = () => {
 							<button
 								onClick={() => handleSocialLogin("github")}
 								disabled={!!isLoading}
+								type="button"
 								className="flex-1 h-14 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 group disabled:opacity-50 disabled:active:scale-100"
 							>
 								{isLoading === "github" ? (
@@ -101,6 +105,7 @@ const LoginPage: React.FC = () => {
 							<button
 								onClick={() => handleSocialLogin("discord")}
 								disabled={!!isLoading}
+								type="button"
 								className="flex-1 h-14 bg-[#5865F2] hover:bg-[#4752C4] text-white font-black rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 group disabled:opacity-50 disabled:active:scale-100"
 							>
 								{isLoading === "discord" ? (
@@ -112,6 +117,7 @@ const LoginPage: React.FC = () => {
 											fill="currentColor"
 											viewBox="0 0 127.14 96.36"
 										>
+											<title>Discord</title>
 											<path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.48,80.1a105.73,105.73,0,0,0,32.22,16.26,77.7,77.7,0,0,0,7.12-11.53,68.9,68.9,0,0,1-11.4-5.45c.95-.7,1.89-1.43,2.79-2.2a75.75,75.75,0,0,0,64.74,0c.9,1.17,1.84,1.89,2.79,2.2a68.49,68.49,0,0,1-11.4,5.44,77.76,77.76,0,0,0,7.12,11.53,105.41,105.41,0,0,0,32.27-16.26C129.6,50.12,125.7,26.27,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5.07-12.71,11.41-12.71,11.52,5.76,11.52,12.71S48.83,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.07-12.71,11.44-12.71,11.52,5.76,11.52,12.71S84.79,65.69,84.69,65.69Z" />
 										</svg>
 										DISCORD

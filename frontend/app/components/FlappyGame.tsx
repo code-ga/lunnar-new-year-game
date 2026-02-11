@@ -92,7 +92,7 @@ const FlappyGame: React.FC = () => {
 				});
 			}
 
-			pipes.current.forEach((pipe) => (pipe.x -= 2));
+			pipes.current.map((pipe) => (pipe.x -= 2));
 			pipes.current = pipes.current.filter((p) => p.x > -50);
 
 			// Collision
@@ -161,6 +161,7 @@ const FlappyGame: React.FC = () => {
 					</div>
 					<button
 						onClick={startGame}
+						type="button"
 						disabled={gameState === "loading"}
 						className="px-12 py-4 bg-blue-500 text-white font-black text-xl rounded-2xl shadow-xl hover:bg-blue-600 active:scale-95 transition-all w-full"
 					>
@@ -168,6 +169,7 @@ const FlappyGame: React.FC = () => {
 					</button>
 				</div>
 			) : gameState === "playing" ? (
+				// biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
 				<div
 					className="relative group cursor-pointer select-none touch-none"
 					onMouseDown={handleAction}
@@ -209,6 +211,7 @@ const FlappyGame: React.FC = () => {
 						THƯỞNG: +{Math.floor(score / 5)} XU
 					</div>
 					<button
+						type="button"
 						onClick={() => setGameState("idle")}
 						className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all"
 					>

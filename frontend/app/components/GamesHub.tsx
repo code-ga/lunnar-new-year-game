@@ -1,6 +1,6 @@
 import React from "react";
 import { Ghost, Car, Dice5, Gamepad2, X, Info } from "lucide-react";
-import { GameId } from "../types";
+import type { GameId } from "../types";
 import FlappyGame from "./FlappyGame";
 import TurboClickGame from "./TurboClickGame";
 import TaiXiuGame from "./TaiXiuGame";
@@ -16,6 +16,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ activeGame, setActiveGame }) => {
 		return (
 			<div className="h-full relative bg-slate-900 overflow-hidden">
 				<button
+					type="button"
 					onClick={() => setActiveGame(null)}
 					className="absolute top-4 left-4 z-50 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-2 rounded-xl transition-colors"
 				>
@@ -75,6 +76,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ activeGame, setActiveGame }) => {
 			<div className="grid grid-cols-2 gap-4 w-full max-w-2xl pb-20">
 				{games.map((game) => (
 					<button
+						type="button"
 						key={game.id}
 						onClick={() => setActiveGame(game.id as GameId)}
 						className={`${game.color} text-white p-6 rounded-3xl shadow-xl flex flex-col items-center justify-center gap-2 transform transition hover:scale-105 active:scale-95 group text-center border-b-8 border-black/20`}

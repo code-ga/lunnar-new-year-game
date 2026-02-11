@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Flame, Check, Copy, X, Lock } from "lucide-react";
-import { InventoryItem } from "../types";
+import type { InventoryItem } from "../types";
 import { RARITY_CONFIG } from "../constants";
 import { useGameStore } from "../store/useGameStore";
 
@@ -63,12 +63,14 @@ const CollectionView: React.FC = () => {
 			{/* Sub-tabs Header */}
 			<div className="flex p-4 pb-0 gap-6 border-b border-slate-200 bg-white sticky top-0 z-10 shadow-sm">
 				<button
+					type="button"
 					onClick={() => setSubTab("inventory")}
 					className={`pb-3 text-sm font-bold border-b-2 transition-colors ${subTab === "inventory" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500"}`}
 				>
 					Túi Đồ ({inventory.length})
 				</button>
 				<button
+					type="button"
 					onClick={() => setSubTab("catalog")}
 					className={`pb-3 text-sm font-bold border-b-2 transition-colors ${subTab === "catalog" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500"}`}
 				>
@@ -94,6 +96,7 @@ const CollectionView: React.FC = () => {
 								const isEx = item.rarity === "EX";
 								return (
 									<button
+										type="button"
 										key={item.uniqueId}
 										onClick={() => setSelectedItem(item)}
 										className="group cursor-pointer transform transition hover:scale-105 active:scale-95 text-left"
@@ -165,6 +168,7 @@ const CollectionView: React.FC = () => {
 				<div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-pop-in">
 					<div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center relative overflow-hidden border border-slate-100">
 						<button
+							type="button"
 							onClick={() => setSelectedItem(null)}
 							className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full text-slate-400"
 						>
@@ -190,6 +194,7 @@ const CollectionView: React.FC = () => {
 						</div>
 
 						<button
+							type="button"
 							onClick={() => {
 								handleBurn(selectedItem);
 								setSelectedItem(null);
@@ -227,6 +232,7 @@ const CollectionView: React.FC = () => {
 						</div>
 
 						<button
+							type="button"
 							onClick={() => copyToClipboard(burnedCode.full)}
 							className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:bg-indigo-700 flex items-center justify-center gap-3 active:scale-95 transition-transform"
 						>
@@ -234,6 +240,7 @@ const CollectionView: React.FC = () => {
 						</button>
 
 						<button
+							type="button"
 							onClick={() => setBurnedCode(null)}
 							className="mt-6 text-sm font-bold text-slate-400 hover:text-slate-600"
 						>

@@ -5,7 +5,17 @@ import { useGameStore } from "../store/useGameStore";
 import { Calendar, Sparkles, Gamepad2, Cloud } from "lucide-react";
 import { BACKEND_URL } from "../constants";
 import type { GameId } from "../types";
-
+import type { Route } from "./+types/HomePage";
+export function meta({}: Route.MetaArgs) {
+	return [
+		{ title: "Thế Giới Gacha Gối Ôm" },
+		{
+			name: "description",
+			content:
+				"Một ứng dụng gacha gối ôm đầy màu sắc với hệ thống vật phẩm hiếm, mini-games kiếm xu và tính năng trao đổi mã vật phẩm.",
+		},
+	];
+}
 const HomePage: React.FC = () => {
 	const { user, fetchUserData } = useGameStore();
 	const [activeGame, setActiveGame] = React.useState<GameId | null>(null);
@@ -40,6 +50,7 @@ const HomePage: React.FC = () => {
 							new Date(user.lastCheckIn).toDateString() ===
 								new Date().toDateString()
 						}
+						type="button"
 						className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
 					>
 						<Calendar size={20} />

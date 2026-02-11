@@ -4,7 +4,7 @@ import { Car, Timer, MousePointer2 } from "lucide-react";
 import { BACKEND_URL } from "../constants";
 
 const TurboClickGame: React.FC = () => {
-	const { updateCoins } = useGameStore();
+	const { updateCoins, fetchUserData } = useGameStore();
 	const [clicks, setClicks] = useState(0);
 	const [timer, setTimer] = useState(10);
 	const [gameState, setGameState] = useState<
@@ -13,14 +13,23 @@ const TurboClickGame: React.FC = () => {
 	const socketRef = useRef<WebSocket | null>(null);
 	const intervalRef = useRef<any>(null);
 
-	const startRace = () => {
+	const startRace = async () => {
 		setGameState("loading");
-
+		const res = await fetch(`${BACKEND_URL}/api/game/play/turbo-click/ws`, {
+			method: "POST",
+			credentials: "include",
+		});
+		if (!res.ok) {
+			setGameState("idle");
+			return alert("Lỗi khởi tạo game!");
+		}
+		const data = await res.json();
+		const token = data.token;
 		// Use wss:// if https, else ws://
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-		const wsUrl = `${protocol}//${BACKEND_URL.replace(/^https?:\/\//, "")}/api/game/ws/turbo-click`;
+		const wsUrl = `${protocol}//${BACKEND_URL.replace(/^https?:\/\//, "")}/api/game/ws/turbo-click/${token}`;
 
-		const socket = new WebSocket(wsUrl);
+		const socket = new WebSocket(wsUrl, []);
 		socketRef.current = socket;
 
 		socket.onopen = () => {
@@ -45,6 +54,11 @@ const TurboClickGame: React.FC = () => {
 			const data = JSON.parse(event.data);
 			if (data.type === "update") {
 				setClicks(data.score);
+				setTimer(data.timeleft); // Sync timer with server
+			} else if (data.type === "end") {
+				setClicks(data.score);
+				setGameState("result");
+				fetchUserData(); // Refresh user data to get updated coins
 			}
 		};
 
@@ -68,7 +82,7 @@ const TurboClickGame: React.FC = () => {
 			}
 		}
 		return () => {
-			if (socketRef.current) socketRef.current.close();
+			// if (socketRef.current) socketRef.current.close();
 			clearInterval(intervalRef.current);
 		};
 	}, [gameState, clicks, updateCoins]);
@@ -99,6 +113,7 @@ const TurboClickGame: React.FC = () => {
 						</p>
 					</div>
 					<button
+						type="button"
 						onClick={startRace}
 						disabled={gameState === "loading"}
 						className="px-12 py-4 bg-orange-500 text-white font-black text-xl rounded-2xl shadow-xl hover:bg-orange-600 active:scale-95 transition-all w-full"
@@ -119,6 +134,7 @@ const TurboClickGame: React.FC = () => {
 					</div>
 
 					<button
+						type="button"
 						onMouseDown={handleClick}
 						className="w-48 h-48 bg-white border-8 border-orange-500 rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform cursor-pointer select-none"
 					>
@@ -140,6 +156,7 @@ const TurboClickGame: React.FC = () => {
 						Nhận được: {Math.floor(clicks / 5)} Xu
 					</div>
 					<button
+						type="button"
 						onClick={() => setGameState("idle")}
 						className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl active:scale-95 transition-all"
 					>

@@ -1,4 +1,4 @@
-import { Rarity, RarityConfig } from "./types";
+import type { Rarity, RarityConfig } from "./types";
 
 export const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
 	E: {
@@ -77,4 +77,4 @@ export const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
 export const GACHA_COST = 100;
 export const DAILY_REWARD = 500;
 export const BACKEND_URL = "http://localhost:3001";
-export const LOGIN_REDIRECT_URL = "http://localhost:3000/";
+export const LOGIN_REDIRECT_URL = "http://localhost:5173/";

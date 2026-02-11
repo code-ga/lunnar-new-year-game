@@ -1,6 +1,6 @@
 import { Edit2, Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { BACKEND_URL } from "../constants";
 import { useGameStore } from "../store/useGameStore";
 
@@ -27,7 +27,7 @@ const AdminPage: React.FC = () => {
 			} else {
 				const res = await fetch(`${BACKEND_URL}/api/orders`, {
 					credentials: "include",
-                });
+				});
 				if (res.ok) setOrders(await res.json());
 			}
 		} catch (e) {
@@ -61,12 +61,14 @@ const AdminPage: React.FC = () => {
 				</div>
 				<div className="flex bg-slate-100 p-1 rounded-2xl shadow-inner">
 					<button
+						type="button"
 						onClick={() => setTab("items")}
 						className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 ${tab === "items" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
 					>
 						<Package size={18} /> Vật Phẩm
 					</button>
 					<button
+						type="button"
 						onClick={() => setTab("orders")}
 						className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 ${tab === "orders" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
 					>
@@ -77,7 +79,10 @@ const AdminPage: React.FC = () => {
 
 			{tab === "items" ? (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					<button className="h-64 border-4 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-indigo-300 hover:text-indigo-400 hover:bg-indigo-50/30 transition-all group">
+					<button
+						type="button"
+						className="h-64 border-4 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-indigo-300 hover:text-indigo-400 hover:bg-indigo-50/30 transition-all group"
+					>
 						<div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
 							<Plus size={32} />
 						</div>
@@ -101,10 +106,16 @@ const AdminPage: React.FC = () => {
 								</div>
 							</div>
 							<div className="bg-slate-50 p-4 flex gap-2 border-t border-slate-100">
-								<button className="flex-1 bg-white border border-slate-200 py-2 rounded-xl text-slate-500 font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2">
+								<button
+									type="button"
+									className="flex-1 bg-white border border-slate-200 py-2 rounded-xl text-slate-500 font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
+								>
 									<Edit2 size={14} /> Sửa
 								</button>
-								<button className="p-2 bg-white border border-slate-200 rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+								<button
+									type="button"
+									className="p-2 bg-white border border-slate-200 rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+								>
 									<Trash2 size={16} />
 								</button>
 							</div>

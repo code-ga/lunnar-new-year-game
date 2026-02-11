@@ -9,6 +9,7 @@ import {
 	Calendar,
 } from "lucide-react";
 import { useGameStore } from "../store/useGameStore";
+import { Link } from "react-router";
 
 const ProfileView: React.FC = () => {
 	const { user } = useGameStore();
@@ -25,12 +26,13 @@ const ProfileView: React.FC = () => {
 						<User size={40} className="text-slate-300" />
 					</div>
 					<h2 className="text-xl font-bold">Chưa Đăng Nhập</h2>
-					<button
-						onClick={() => (window.location.href = "/login")}
+					<Link
+						// onClick={() => (window.location.href = "/login")}
 						className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold"
+						to="/login"
 					>
 						ĐẾN TRANG ĐĂNG NHẬP
-					</button>
+					</Link>
 				</div>
 			</div>
 		);
@@ -91,6 +93,7 @@ const ProfileView: React.FC = () => {
 					<div className="pt-6">
 						<button
 							onClick={handleLogout}
+							type="button"
 							className="w-full py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center gap-3 group"
 						>
 							<LogOut

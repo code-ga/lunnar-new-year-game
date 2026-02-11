@@ -66,6 +66,7 @@ const ExchangeView: React.FC = () => {
 				</div>
 
 				<div className="space-y-2">
+					{/** biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
 					<label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
 						Vui lòng nhập code
 					</label>
@@ -79,6 +80,7 @@ const ExchangeView: React.FC = () => {
 				</div>
 
 				<button
+					type="button"
 					onClick={handleImport}
 					className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform uppercase tracking-widest"
 				>

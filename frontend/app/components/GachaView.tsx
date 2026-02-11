@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useGameStore } from "../store/useGameStore";
 import { Gift, Sparkles } from "lucide-react";
 import { BACKEND_URL, GACHA_COST, RARITY_CONFIG } from "../constants";
-import { InventoryItem } from "../types";
+import type { InventoryItem } from "../types";
 
 const GachaView: React.FC = () => {
 	const { user, updateCoins, addInventoryItem } = useGameStore();
@@ -97,6 +97,7 @@ const GachaView: React.FC = () => {
 
 				<button
 					onClick={() => setResult(null)}
+					type="button"
 					className="px-10 py-4 bg-indigo-600 text-white rounded-full font-bold shadow-xl hover:bg-indigo-700 active:scale-95 transition-transform"
 				>
 					Tiếp Tục
@@ -120,6 +121,7 @@ const GachaView: React.FC = () => {
 				<div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
 				<button
 					onClick={handlePull}
+					type="button"
 					disabled={pulling || currentCoins < GACHA_COST}
 					className={`relative w-56 h-72 bg-white rounded-2xl shadow-2xl border-4 border-indigo-100 flex flex-col items-center justify-center transform transition hover:scale-105 active:scale-95 
             ${pulling ? "animate-bounce-crazy" : ""} 

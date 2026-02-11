@@ -4,6 +4,9 @@ import { db } from "../database";
 import { items, schema } from "../database/schema";
 import { authenticationMiddleware } from "../middleware/auth";
 
+const websocketConnections: Record<string, any> = {};
+const turboClickTokenMap: Record<string, string> = {};
+
 export const gameRouter = new Elysia({ prefix: "/game" })
 	.use(authenticationMiddleware)
 	.guard(
@@ -144,7 +147,7 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 					async ({ profile, body }) => {
 						const { score } = body;
 
-						const reward = Math.floor(score / 5);
+						const reward = Math.round(score / 5);
 						await db
 							.update(schema.profile)
 							.set({ coins: profile.coins + reward })
@@ -158,42 +161,81 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 							score: t.Number(),
 						}),
 					},
+				)
+				.post(
+					"/play/turbo-click/ws",
+					async ({ profile }) => {
+						// generate a URL or token for WS connection (handled in WS section	)
+						const token = crypto.randomUUID();
+						turboClickTokenMap[token] = profile.id;
+						return { success: true, token };
+					},
+					{},
 				),
 	)
-	.ws("/ws/turbo-click", {
+	.ws("/ws/turbo-click/:token", {
 		open(ws) {
 			console.log("Turbo Click WS opened");
-			//@ts-expect-error
-			ws.data.score = 0;
-			//@ts-expect-error
-			ws.data.startTime = Date.now();
+			// ws.data.score = 0;
+			// ws.data.startTime = Date.now();
+			websocketConnections[ws.id] = { score: 0, startTime: Date.now() };
 		},
 		message(ws, message: any) {
+			console.log("Turbo Click WS message", message);
 			if (message.type === "click") {
-				//@ts-expect-error
-				ws.data.score++;
-				//@ts-expect-error
-				ws.send({ type: "update", score: ws.data.score });
-			}
-		},
-		async close(ws) {
-			const { profile } = ws.data;
-			if (!profile) return;
+				websocketConnections[ws.id].score += 1;
+				const timeElapsed =
+					(Date.now() - websocketConnections[ws.id].startTime) / 1000;
+				const timeleft = Math.max(10 - timeElapsed);
 
-			//@ts-expect-error
-			const timeElapsed = (Date.now() - ws.data.startTime) / 1000;
-			// Basic validation: avoid awarding for < 1s play or impossible click rates
-			//@ts-expect-error
-			if (timeElapsed >= 9 && ws.data.score / timeElapsed < 20) {
-				//@ts-expect-error
-				const reward = Math.floor(ws.data.score / 5);
-				if (reward > 0) {
-					await db
-						.update(schema.profile)
-						.set({ coins: profile.coins + reward })
-						.where(eq(schema.profile.id, profile.id));
-					console.log(`Awarded ${reward} coins to ${profile.id}`);
+				ws.send({
+					type: "update",
+					score: websocketConnections[ws.id].score,
+					timeleft,
+				});
+				if (timeleft <= 0) {
+					ws.send({
+						type: "end",
+						score: websocketConnections[ws.id].score,
+						reward: Math.round(websocketConnections[ws.id].score / 5),
+					});
+					ws.close();
+					return;
 				}
 			}
 		},
+		async close(ws) {
+			console.log("Turbo Click WS closed");
+			const profile =
+				ws.data.profile ||
+				(typeof turboClickTokenMap[ws.data.params.token] === "string"
+					? await db
+							.select()
+							.from(schema.profile)
+							.where(
+								eq(schema.profile.id, turboClickTokenMap[ws.data.params.token]),
+							)
+							.limit(1)
+							.then((res) => res[0])
+					: null);
+			if (!profile) return;
+
+			const userData = await db
+				.select()
+				.from(schema.profile)
+				.where(eq(schema.profile.id, profile.id))
+				.limit(1);
+			if (userData.length === 0 || !websocketConnections[ws.id] || !userData[0])
+				return;
+			const user = userData[0];
+
+			const finalScore = websocketConnections[ws.id].score;
+			const reward = Math.round(finalScore / 5);
+			await db
+				.update(schema.profile)
+				.set({ coins: user.coins + reward })
+				.where(eq(schema.profile.id, profile.id));
+		},
+		idleTimeout: 60000,
+		sendPings: true,
 	});
