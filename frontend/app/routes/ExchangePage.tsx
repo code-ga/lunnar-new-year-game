@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Gift, AlertCircle, CheckCircle2 } from "lucide-react";
-import type { InventoryItem } from "../types";
+// import type { InventoryItem } from "../types";
 import { useGameStore } from "../store/useGameStore";
+import type { SchemaType } from "../lib/api";
 
 const ExchangeView: React.FC = () => {
 	const { addInventoryItem, templates, fetchTemplates } = useGameStore();
@@ -33,7 +34,7 @@ const ExchangeView: React.FC = () => {
 		const template = templates.find((t) => t.id === templateId);
 
 		if (template) {
-			const newItem: InventoryItem = {
+			const newItem: SchemaType["userItems"] = {
 				...template,
 				uniqueId: Math.random().toString(36).substring(2, 9).toUpperCase(),
 				obtainedAt: Date.now(),

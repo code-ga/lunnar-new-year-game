@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../store/useGameStore";
 import { Ghost, Trophy } from "lucide-react";
-import { BACKEND_URL } from "../constants";
+// import { BACKEND_URL } from "../constants";
+import { fetchApi } from "../lib/api";
 
 const FlappyGame: React.FC = () => {
 	const { updateCoins } = useGameStore();
@@ -24,12 +25,12 @@ const FlappyGame: React.FC = () => {
 	const startGame = async () => {
 		setGameState("loading");
 		try {
-			const res = await fetch(`${BACKEND_URL}/api/game/play/skill/start`, {
+			const res = await fetchApi(`/api/game/play/skill/start`, {
 				method: "POST",
 				credentials: "include",
 			});
-			if (res.ok) {
-				const data = await res.json();
+			if (res.data) {
+				const data = res.data;
 				setSessionId(data.sessionId);
 				setScore(0);
 				setGameState("playing");
@@ -53,14 +54,14 @@ const FlappyGame: React.FC = () => {
 		setGameState("result");
 		if (!sessionId) return;
 		try {
-			const res = await fetch(`${BACKEND_URL}/api/game/play/skill/end`, {
+			const res = await fetchApi(`/api/game/play/skill/end`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ sessionId, score: finalScore }),
+				body: { sessionId, score: finalScore },
 				credentials: "include",
 			});
-			if (res.ok) {
-				const data = await res.json();
+			if (res.data) {
+				const data = res.data;
 				updateCoins(data.reward);
 			}
 		} catch (e) {

@@ -35,9 +35,17 @@ export const profileRouter = new Elysia({
 								success: false,
 							});
 						}
+						const inventory = await db
+							.select()
+							.from(schema.userItems)
+							.where(eq(schema.userItems.profileId, profile[0].id));
+
 						return ctx.status(200, {
 							status: 200,
-							data: profile[0],
+							data: {
+								profile: profile[0],
+								inventory: inventory,
+							},
 							message: "Profile fetched successfully",
 							timestamp: Date.now(),
 							success: true,
@@ -48,7 +56,12 @@ export const profileRouter = new Elysia({
 							description: "Get Profile",
 						},
 						response: {
-							200: baseResponseSchema(Type.Object(dbSchemaTypes.profile)),
+							200: baseResponseSchema(
+								Type.Object({
+									profile: Type.Object(dbSchemaTypes.profile),
+									inventory: Type.Array(Type.Object(dbSchemaTypes.userItems)),
+								}),
+							),
 							404: errorResponseSchema,
 						},
 					},
@@ -222,7 +235,7 @@ export const profileRouter = new Elysia({
 		// 	return profile;
 		// }),
 	)
-	.guard({ roleAuth: ["manager"] }, (app) =>
+	.guard({ roleAuth: ["admin"] }, (app) =>
 		app
 			.patch(
 				"/add_role",
@@ -317,7 +330,7 @@ export const profileRouter = new Elysia({
 						200: baseResponseSchema(Type.Object(dbSchemaTypes.profile)),
 						400: errorResponseSchema,
 					},
-					roleAuth: ["manager"],
+					roleAuth: ["admin"],
 				},
 			)
 			.patch(
@@ -386,7 +399,7 @@ export const profileRouter = new Elysia({
 						200: baseResponseSchema(Type.Object(dbSchemaTypes.profile)),
 						400: errorResponseSchema,
 					},
-					roleAuth: ["manager"],
+					roleAuth: ["admin"],
 				},
 			)
 			.get(
@@ -408,7 +421,7 @@ export const profileRouter = new Elysia({
 						),
 						400: errorResponseSchema,
 					},
-					roleAuth: ["manager"],
+					roleAuth: ["admin"],
 				},
 			)
 			.get(
@@ -457,7 +470,7 @@ export const profileRouter = new Elysia({
 						),
 						400: errorResponseSchema,
 					},
-					roleAuth: ["manager"],
+					roleAuth: ["admin"],
 				},
 			)
 			.get(
@@ -480,7 +493,7 @@ export const profileRouter = new Elysia({
 						200: baseResponseSchema(Type.Array(Type.String())),
 						400: errorResponseSchema,
 					},
-					roleAuth: ["manager"],
+					roleAuth: ["admin"],
 				},
 			),
 	);

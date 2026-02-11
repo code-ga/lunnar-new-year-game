@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useGameStore } from "../store/useGameStore";
-import { BACKEND_URL } from "../constants";
+import { fetchApi } from "../lib/api";
 
 const SYMBOLS = ["🦌", "🎃", "🐓", "🐟", "🦀", "🦐"];
 
@@ -30,18 +30,18 @@ const BauCuaGame: React.FC = () => {
 
 		setIsRolling(true);
 		try {
-			const res = await fetch(`${BACKEND_URL}/api/game/play/probability`, {
+			const res = await fetchApi(`/api/game/play/probability`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
+				body: {
 					gameId: "baucua",
 					bets: bets,
-				}),
+				},
 				credentials: "include",
 			});
 
-			if (res.ok) {
-				const data = await res.json();
+			if (res.data) {
+				const data = res.data;
 				setTimeout(() => {
 					setResult(data.result.symbols);
 					setIsRolling(false);

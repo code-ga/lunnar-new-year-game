@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../store/useGameStore";
 import { Car, Timer, MousePointer2 } from "lucide-react";
 import { BACKEND_URL } from "../constants";
+import { fetchApi } from "../lib/api";
 
 const TurboClickGame: React.FC = () => {
 	const { updateCoins, fetchUserData } = useGameStore();
@@ -15,15 +16,15 @@ const TurboClickGame: React.FC = () => {
 
 	const startRace = async () => {
 		setGameState("loading");
-		const res = await fetch(`${BACKEND_URL}/api/game/play/turbo-click/ws`, {
+		const res = await fetchApi(`/api/game/play/turbo-click/ws`, {
 			method: "POST",
 			credentials: "include",
 		});
-		if (!res.ok) {
+		if (!res.data) {
 			setGameState("idle");
 			return alert("Lỗi khởi tạo game!");
 		}
-		const data = await res.json();
+		const data = res.data;
 		const token = data.token;
 		// Use wss:// if https, else ws://
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";

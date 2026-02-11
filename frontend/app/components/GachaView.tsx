@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useGameStore } from "../store/useGameStore";
 import { Gift, Sparkles } from "lucide-react";
 import { BACKEND_URL, GACHA_COST, RARITY_CONFIG } from "../constants";
-import type { InventoryItem } from "../types";
+// import type { InventoryItem } from "../types";
+import { fetchApi, type SchemaType } from "../lib/api";
 
 const GachaView: React.FC = () => {
 	const { user, updateCoins, addInventoryItem } = useGameStore();
 	const [pulling, setPulling] = useState(false);
-	const [result, setResult] = useState<InventoryItem | null>(null);
+	const [result, setResult] = useState<SchemaType["items"] | null>(null);
 
 	const handlePull = async () => {
 		if (!user || (user.coins ?? 0) < GACHA_COST) {
@@ -19,24 +20,30 @@ const GachaView: React.FC = () => {
 		setResult(null);
 
 		try {
-			const response = await fetch(`${BACKEND_URL}/api/game/roll`, {
+			const response = await fetchApi(`/api/game/roll`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				// body: JSON.stringify({ userId: user.id }),
 				credentials: "include",
 			});
-			if (response.ok) {
-				const item = await response.json();
+			if (response.data?.data) {
+				const item = response.data.data;
 				// Simulation delay for "wow" factor
 				setTimeout(() => {
 					setPulling(false);
-					setResult(item);
-					addInventoryItem(item);
+					setResult(item.rolledItem);
+					if (
+						item.userItems &&
+						item.userItems.length > 0 &&
+						item.userItems[0]
+					) {
+						addInventoryItem(item.userItems[0]);
+					}
 					updateCoins(-GACHA_COST);
 				}, 1200);
 			} else {
-				const err = await response.json();
-				alert(err.message || "Có lỗi xảy ra");
+				const err = response.data?.message || response.error?.message;
+				alert(err || "Có lỗi xảy ra");
 				setPulling(false);
 			}
 		} catch (e) {
@@ -74,9 +81,9 @@ const GachaView: React.FC = () => {
 							>
 								{result.rarity} Rank
 							</span>
-							<span className="text-xs text-slate-400 mt-2 font-mono">
+							{/* <span className="text-xs text-slate-400 mt-2 font-mono">
 								#ID:{result.uniqueId}
-							</span>
+							</span> */}
 						</div>
 						<div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg z-20 animate-pulse">
 							MỚI

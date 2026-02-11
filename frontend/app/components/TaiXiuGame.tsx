@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useGameStore } from "../store/useGameStore";
 import { BACKEND_URL } from "../constants";
+import { fetchApi } from "../lib/api";
 
 const TaiXiuGame: React.FC = () => {
 	const { user, updateCoins } = useGameStore();
@@ -18,18 +19,18 @@ const TaiXiuGame: React.FC = () => {
 		setMessage("Đang lắc hũ...");
 
 		try {
-			const res = await fetch(`${BACKEND_URL}/api/game/play/probability`, {
+			const res = await fetchApi(`/api/game/play/probability`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
+				body: {
 					gameId: "taixiu",
 					bets: choice === "XIU" ? [betAmount, 0] : [0, betAmount],
-				}),
+				},
 				credentials: "include",
 			});
 
-			if (res.ok) {
-				const data = await res.json();
+			if (res.data) {
+				const data = res.data;
 				setTimeout(() => {
 					setDice(data.result.dice);
 					setIsRolling(false);

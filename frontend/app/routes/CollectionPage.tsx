@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { Flame, Check, Copy, X, Lock } from "lucide-react";
-import type { InventoryItem } from "../types";
+// import type { InventoryItem } from "../types";
 import { RARITY_CONFIG } from "../constants";
 import { useGameStore } from "../store/useGameStore";
+import { fetchApi, type SchemaType } from "../lib/api";
 
 const CollectionView: React.FC = () => {
 	const { inventory, templates, fetchUserData, fetchTemplates } =
 		useGameStore();
 	const [subTab, setSubTab] = useState<"inventory" | "catalog">("inventory");
-	const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+	const [selectedItem, setSelectedItem] = useState<{
+		template: SchemaType["items"];
+		userItem: SchemaType["userItems"];
+	} | null>(null);
 	const [burnedCode, setBurnedCode] = useState<{
 		full: string;
 		masked: string;
@@ -22,7 +26,10 @@ const CollectionView: React.FC = () => {
 
 	const ownedTemplateIds = new Set(inventory.map((i) => i.id));
 
-	const handleBurn = async (item: InventoryItem) => {
+	const handleBurn = async (item: {
+		template: SchemaType["items"];
+		userItem: SchemaType["userItems"];
+	}) => {
 		if (
 			!confirm(
 				"Bạn có chắc chắn muốn 'Đốt' vật phẩm này để lấy mã trao đổi? Vật phẩm sẽ biến mất vĩnh viễn.",
@@ -31,26 +38,55 @@ const CollectionView: React.FC = () => {
 			return;
 
 		try {
-			const res = await fetch("/api/orders", {
+			const res = await fetchApi("/api/orders", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ itemId: item.id }),
+				body: { itemId: item.template.id },
 				credentials: "include",
 			});
 
-			if (res.ok) {
-				const fullCode = `PIL-${item.id}-${item.rarity}-${item.uniqueId}`;
-				const maskedCode = `PIL-${item.id}-${item.rarity}-******`;
+			if (res.data?.success) {
+				const fullCode = `PIL-${item.template.id}-${item.template.rarity}-${item.userItem.uniqueId}`;
+				const maskedCode = `PIL-${item.template.id}-${item.template.rarity}-******`;
 
 				setBurnedCode({ full: fullCode, masked: maskedCode });
 				await fetchUserData(); // Refresh inventory
 			} else {
-				const err = await res.json();
-				alert(err.message || "Không thể đốt vật phẩm");
-			}
+				const err = res.error?.message;
+				alert(err || "Không thể đốt vật phẩm");
+			}``
 		} catch (e) {
 			alert("Lỗi kết nối server");
 		}
+	};
+	const getItemTemplate = async (itemId: number) => {
+		const template = templates.find((t) => t.id === itemId);
+		if (template) return template;
+
+		// Fetch template if not found
+		try {
+			const res = await fetchApi(`/api/items/:id`, {
+				credentials: "include",
+				method: "GET",
+				params: { id: itemId.toString() },
+			});
+			if (res.data?.data) {
+				return res.data.data as SchemaType["items"];
+			}
+		} catch (e) {
+			console.error("Lỗi khi lấy thông tin vật phẩm:", e);
+		}
+		return {
+			id: itemId,
+			name: "Unknown Item",
+			rarity: "E",
+			uniqueId: "UNKNOWN",
+			image: "/placeholder.png",
+			description: "Không có thông tin",
+			isActive: true,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		} as SchemaType["items"];
 	};
 
 	const copyToClipboard = (text: string) => {
@@ -89,39 +125,45 @@ const CollectionView: React.FC = () => {
 						</div>
 					) : (
 						<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-20">
-							{inventory.map((item) => {
-								const config =
-									RARITY_CONFIG[item.rarity as keyof typeof RARITY_CONFIG] ||
-									RARITY_CONFIG["E"];
-								const isEx = item.rarity === "EX";
-								return (
-									<button
-										type="button"
-										key={item.uniqueId}
-										onClick={() => setSelectedItem(item)}
-										className="group cursor-pointer transform transition hover:scale-105 active:scale-95 text-left"
-									>
-										<div
-											className={`relative w-full aspect-[2/3] rounded-xl shadow-md border ${config.border} flex flex-col items-center justify-between p-2 bg-white overflow-hidden`}
+							<Suspense fallback={<div>Đang tải túi đồ...</div>}>
+								{inventory.map(async (item) => {
+									const template = await getItemTemplate(item.itemId);
+									const config =
+										RARITY_CONFIG[
+											template.rarity as keyof typeof RARITY_CONFIG
+										] || RARITY_CONFIG["E"];
+									const isEx = template.rarity === "EX";
+									return (
+										<button
+											type="button"
+											key={item.uniqueId}
+											onClick={() =>
+												setSelectedItem({ template, userItem: item })
+											}
+											className="group cursor-pointer transform transition hover:scale-105 active:scale-95 text-left"
 										>
 											<div
-												className={`absolute inset-0 ${config.color} opacity-10 ${isEx ? "ex-gradient opacity-20" : ""}`}
-											></div>
-											<div className="z-10 w-full text-center text-[10px] font-bold truncate leading-tight mt-1">
-												{item.name}
-											</div>
-											<div
-												className={`z-10 w-10 h-10 rounded-full ${config.color} text-white flex items-center justify-center font-black text-xs shadow-sm ${isEx ? "ex-gradient" : ""}`}
+												className={`relative w-full aspect-[2/3] rounded-xl shadow-md border ${config.border} flex flex-col items-center justify-between p-2 bg-white overflow-hidden`}
 											>
-												{item.rarity}
+												<div
+													className={`absolute inset-0 ${config.color} opacity-10 ${isEx ? "ex-gradient opacity-20" : ""}`}
+												></div>
+												<div className="z-10 w-full text-center text-[10px] font-bold truncate leading-tight mt-1">
+													{template.name}
+												</div>
+												<div
+													className={`z-10 w-10 h-10 rounded-full ${config.color} text-white flex items-center justify-center font-black text-xs shadow-sm ${isEx ? "ex-gradient" : ""}`}
+												>
+													{template.rarity}
+												</div>
+												<div className="z-10 text-[9px] text-slate-400 font-mono bg-slate-50 px-1 rounded">
+													#{item.uniqueId.slice(-4)}
+												</div>
 											</div>
-											<div className="z-10 text-[9px] text-slate-400 font-mono bg-slate-50 px-1 rounded">
-												#{item.uniqueId.slice(-4)}
-											</div>
-										</div>
-									</button>
-								);
-							})}
+										</button>
+									);
+								})}
+							</Suspense>
 						</div>
 					)
 				) : (
@@ -176,12 +218,12 @@ const CollectionView: React.FC = () => {
 						</button>
 
 						<h2 className="text-2xl font-black text-indigo-900 mb-1">
-							{selectedItem.name}
+							{selectedItem.template.name}
 						</h2>
 						<div
-							className={`inline-block px-3 py-1 rounded-full text-xs font-black text-white ${RARITY_CONFIG[selectedItem.rarity as keyof typeof RARITY_CONFIG]?.color || "bg-slate-500"} mb-6`}
+							className={`inline-block px-3 py-1 rounded-full text-xs font-black text-white ${RARITY_CONFIG[selectedItem.template.rarity as keyof typeof RARITY_CONFIG]?.color || "bg-slate-500"} mb-6`}
 						>
-							RANK {selectedItem.rarity}
+							RANK {selectedItem.template.rarity}
 						</div>
 
 						<div className="p-6 bg-slate-50 rounded-2xl mb-8 border border-slate-200">
@@ -189,7 +231,7 @@ const CollectionView: React.FC = () => {
 								Unique Identifier
 							</p>
 							<p className="font-mono font-bold text-xl select-all tracking-widest text-indigo-600">
-								{selectedItem.uniqueId || "UNKNOWN"}
+								{selectedItem.userItem.uniqueId || "UNKNOWN"}
 							</p>
 						</div>
 

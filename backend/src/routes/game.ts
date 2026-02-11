@@ -3,9 +3,13 @@ import Elysia, { t } from "elysia";
 import { db } from "../database";
 import { items, schema } from "../database/schema";
 import { authenticationMiddleware } from "../middleware/auth";
+import { baseResponseSchema } from "../types";
+import { dbSchemaTypes } from "../database/type";
+import { Type } from "@sinclair/typebox";
 
 const websocketConnections: Record<string, any> = {};
 const turboClickTokenMap: Record<string, string> = {};
+const COST = 50;
 
 export const gameRouter = new Elysia({ prefix: "/game" })
 	.use(authenticationMiddleware)
@@ -41,7 +45,7 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 				// Probability Games (Tai Xiu, Bau Cua)
 				.post(
 					"/play/probability",
-					async ({ profile, body }) => {
+					async ({ profile, body, status }) => {
 						const { gameId, bets } = body;
 
 						const totalBet = bets.reduce((a: number, b: number) => a + b, 0);
@@ -82,62 +86,94 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 							.set({ coins: profile.coins - totalBet + winAmount })
 							.where(eq(schema.profile.id, profile.id));
 
-						return { result, winAmount };
+						return status(200, { result, winAmount });
 					},
 					{
 						body: t.Object({
 							gameId: t.String(),
 							bets: t.Array(t.Number()),
 						}),
+						response: {
+							200: t.Object({
+								result: t.Any(),
+								winAmount: t.Number(),
+							}),
+						},
 					},
 				)
 				// Gacha Roll
-				.post("/roll", async ({ profile }) => {
-					const COST = 50;
-					if (profile.coins < COST) throw new Error("Not enough coins");
+				.post(
+					"/roll",
+					async ({ profile, status }) => {
+						if (profile.coins < COST) throw new Error("Not enough coins");
 
-					const allItems = await db
-						.select()
-						.from(items)
-						.where(eq(items.isActive, true));
-					if (allItems.length === 0) throw new Error("No items available");
-
-					const rolledItem =
-						allItems[Math.floor(Math.random() * allItems.length)];
-					if (!rolledItem) throw new Error("Item not found");
-
-					await db.transaction(async (tx) => {
-						await tx
-							.update(schema.profile)
-							.set({ coins: profile.coins - COST })
-							.where(eq(schema.profile.id, profile.id));
-
-						const [existing] = await tx
+						const allItems = await db
 							.select()
-							.from(schema.userItems)
-							.where(
-								and(
-									eq(schema.userItems.userId, profile.userId),
-									eq(schema.userItems.itemId, rolledItem.id),
-								),
-							);
+							.from(items)
+							.where(eq(items.isActive, true));
+						if (allItems.length === 0) throw new Error("No items available");
 
-						if (existing) {
+						const rolledItem =
+							allItems[Math.floor(Math.random() * allItems.length)];
+						if (!rolledItem) throw new Error("Item not found");
+
+						const userItems = await db.transaction(async (tx) => {
 							await tx
-								.update(schema.userItems)
-								.set({ quantity: existing.quantity + 1 })
-								.where(eq(schema.userItems.id, existing.id));
-						} else {
-							await tx.insert(schema.userItems).values({
-								userId: profile.userId,
-								itemId: rolledItem.id,
-								quantity: 1,
-							});
-						}
-					});
+								.update(schema.profile)
+								.set({ coins: profile.coins - COST })
+								.where(eq(schema.profile.id, profile.id));
 
-					return rolledItem;
-				})
+							const [existing] = await tx
+								.select()
+								.from(schema.userItems)
+								.where(
+									and(
+										eq(schema.userItems.profileId, profile.id),
+										eq(schema.userItems.itemId, rolledItem.id),
+									),
+								);
+
+							if (existing) {
+								return await tx
+									.update(schema.userItems)
+									.set({ quantity: existing.quantity + 1 })
+									.where(eq(schema.userItems.id, existing.id))
+									.returning();
+							} else {
+								return await tx
+									.insert(schema.userItems)
+									.values({
+										profileId: profile.id,
+										itemId: rolledItem.id,
+										quantity: 1,
+									})
+									.returning();
+							}
+						});
+						if (!userItems) throw new Error("Failed to update inventory");
+
+						return status(200, {
+							success: true,
+							data: {
+								rolledItem,
+								userCoins: profile.coins - COST,
+								userItems,
+							},
+							timestamp: Date.now(),
+						});
+					},
+					{
+						response: {
+							200: baseResponseSchema(
+								Type.Object({
+									rolledItem: Type.Object(dbSchemaTypes.items),
+									userCoins: Type.Number(),
+									userItems: Type.Array(Type.Object(dbSchemaTypes.userItems)),
+								}),
+							),
+						},
+					},
+				)
 				// Skill Game endpoints (stubbed logic for brevity)
 				.post("/play/skill/start", async () => {
 					return { sessionId: crypto.randomUUID(), startTime: Date.now() };
@@ -213,7 +249,10 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 							.select()
 							.from(schema.profile)
 							.where(
-								eq(schema.profile.id, turboClickTokenMap[ws.data.params.token]),
+								eq(
+									schema.profile.id,
+									turboClickTokenMap[ws.data.params.token]!,
+								),
 							)
 							.limit(1)
 							.then((res) => res[0])

@@ -1,28 +1,19 @@
 import { create } from "zustand";
-import type { InventoryItem, PillowTemplate } from "../types";
-import { BACKEND_URL } from "../constants";
-
-interface UserProfile {
-	id: string;
-	username: string;
-	coins: number;
-	lastCheckIn: string | null;
-	permission: string[];
-}
+import { api, type SchemaType } from "../lib/api";
 
 interface GameState {
-	user: UserProfile | null;
-	inventory: InventoryItem[];
-	templates: PillowTemplate[];
+	user: SchemaType["profile"] | null;
+	inventory: SchemaType["userItems"][];
+	templates: SchemaType["items"][];
 	loading: boolean;
 	error: string | null;
 
-	setUser: (user: UserProfile | null) => void;
-	setInventory: (items: InventoryItem[]) => void;
+	setUser: (user: SchemaType["profile"] | null) => void;
+	setInventory: (items: SchemaType["userItems"][]) => void;
 	fetchUserData: () => Promise<void>;
 	fetchTemplates: () => Promise<void>;
 	updateCoins: (amount: number) => void;
-	addInventoryItem: (item: InventoryItem) => void;
+	addInventoryItem: (item: SchemaType["userItems"]) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -38,14 +29,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 	fetchUserData: async () => {
 		set({ loading: true });
 		try {
-			const response = await fetch(`${BACKEND_URL}/api/profile/me`, {
-				credentials: "include",
-			});
-			if (response.ok) {
-				const data = await response.json();
+			const response = await api.api.profile.me.get();
+			if (!response.data?.data) {
 				set({
-					user: data.data,
-					inventory: data.data.inventory || [],
+					user: response.data?.data.profile,
+					inventory: response.data?.data.inventory || [],
 				});
 			}
 		} catch (e) {
@@ -68,12 +56,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
 	fetchTemplates: async () => {
 		try {
-			const response = await fetch(`${BACKEND_URL}/api/items`, {
-				credentials: "include",
-			});
-			if (response.ok) {
-				const data = await response.json();
-				set({ templates: data });
+			const response = await api.api.items.get();
+			if (response.data?.data) {
+				set({ templates: response.data.data });
 			}
 		} catch (e) {
 			console.error("Failed to fetch templates", e);

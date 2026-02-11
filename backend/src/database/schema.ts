@@ -109,12 +109,16 @@ export const items = pgTable("items", {
 
 export const userItems = pgTable("user_items", {
 	id: serial("id").primaryKey(),
-	userId: text("user_id")
+	profileId: text("profile_id")
 		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
+		.references(() => profile.id, { onDelete: "cascade" }),
 	itemId: serial("item_id")
 		.notNull()
 		.references(() => items.id, { onDelete: "cascade" }),
+	uniqueId: text("unique_id")
+		.notNull()
+		.unique()
+		.$defaultFn(() => crypto.randomUUID()),
 	quantity: integer("quantity").default(1).notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -127,9 +131,9 @@ export const orderStatusEnum = pgEnum("order_status", [
 
 export const orders = pgTable("orders", {
 	id: serial("id").primaryKey(),
-	userId: text("user_id")
+	profileId: text("profile_id")
 		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
+		.references(() => profile.id, { onDelete: "cascade" }),
 	itemId: serial("item_id")
 		.notNull()
 		.references(() => items.id, { onDelete: "cascade" }),
@@ -176,19 +180,20 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.user.id,
 			to: r.profile.userId,
 		}),
-		userItems: r.many.userItems({
-			from: r.user.id,
-			to: r.userItems.userId,
-		}),
-		orders: r.many.orders({
-			from: r.user.id,
-			to: r.orders.userId,
-		}),
+		session: r.many.session({ from: r.user.id, to: r.session.userId }),
 	},
 	profile: {
 		user: r.one.user({
 			from: r.profile.userId,
 			to: r.user.id,
+		}),
+		userItems: r.many.userItems({
+			from: r.profile.id,
+			to: r.userItems.profileId,
+		}),
+		orders: r.many.orders({
+			from: r.profile.id,
+			to: r.orders.profileId,
 		}),
 	},
 	items: {
@@ -202,9 +207,9 @@ export const relations = defineRelations(schema, (r) => ({
 		}),
 	},
 	userItems: {
-		user: r.one.user({
-			from: r.userItems.userId,
-			to: r.user.id,
+		profile: r.one.profile({
+			from: r.userItems.profileId,
+			to: r.profile.id,
 		}),
 		item: r.one.items({
 			from: r.userItems.itemId,
@@ -212,9 +217,9 @@ export const relations = defineRelations(schema, (r) => ({
 		}),
 	},
 	orders: {
-		user: r.one.user({
-			from: r.orders.userId,
-			to: r.user.id,
+		profile: r.one.profile({
+			from: r.orders.profileId,
+			to: r.profile.id,
 		}),
 		item: r.one.items({
 			from: r.orders.itemId,
