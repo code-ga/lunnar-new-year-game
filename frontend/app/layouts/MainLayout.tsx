@@ -67,7 +67,7 @@ const MainLayout: React.FC = () => {
 				</nav>
 			</div>
 
-			<main className="flex-1 relative h-full bg-slate-50 pt-14 md:pt-0 pb-16 md:pb-0 overflow-hidden">
+			<main className="flex-1 relative h-full bg-slate-50 pt-14 md:pt-0 pb-16 md:pb-0">
 				<div className="h-full overflow-y-auto no-scrollbar">
 					<Outlet />
 				</div>

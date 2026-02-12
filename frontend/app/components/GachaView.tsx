@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useGameStore } from "../store/useGameStore";
-import { Gift, Sparkles } from "lucide-react";
-import { GACHA_COST, RARITY_CONFIG } from "../constants";
+import { Gift, Sparkles, TrendingUp } from "lucide-react";
+import { GACHA_COST, getItemDisplayConfig } from "../constants";
 // import type { InventoryItem } from "../types";
 import { fetchApi, type SchemaType } from "../lib/api";
 
@@ -53,8 +53,8 @@ const GachaView: React.FC = () => {
 	};
 
 	if (result) {
-		const config = RARITY_CONFIG[result.rarity as keyof typeof RARITY_CONFIG];
-		const isEx = result.rarity === "EX";
+		const config = getItemDisplayConfig(result);
+		const isEx = result.isEx || (result as any).group?.isEx;
 
 		return (
 			<div className="flex flex-col items-center justify-center min-h-full p-6 animate-pop-in">
@@ -85,15 +85,17 @@ const GachaView: React.FC = () => {
 								result.name
 							)}
 						</div>
-						<div className="z-10 w-full flex flex-col items-center">
+						<div className="z-10 w-full flex flex-col items-center gap-1">
 							<span
 								className={`px-4 py-1.5 rounded-full text-white font-bold text-sm ${config.color} ${isEx ? "ex-gradient" : ""}`}
 							>
-								{result.rarity} Rank
+								{(result as any).group?.name || result.rarity}
 							</span>
-							{/* <span className="text-xs text-slate-400 mt-2 font-mono">
-								#ID:{result.uniqueId}
-							</span> */}
+							{result.quantity !== -1 && result.quantity !== undefined && (
+								<span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold">
+									{result.quantity} left
+								</span>
+							)}
 						</div>
 						<div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg z-20 animate-pulse">
 							MỚI
@@ -157,12 +159,22 @@ const GachaView: React.FC = () => {
 				</button>
 			</div>
 
-			<div className="bg-white/50 backdrop-blur-sm p-3 rounded-2xl border border-indigo-50 flex items-center gap-2">
-				<Sparkles size={16} className="text-indigo-400" />
-				<span className="text-slate-500 text-sm font-medium">
-					{/* Hệ thống gacha công bằng - Tỉ lệ EX 0.1% */}
-					Bạn có {currentCoins.toLocaleString()} Xu
-				</span>
+			<div className="flex flex-col gap-2">
+				<div className="bg-white/50 backdrop-blur-sm p-3 rounded-2xl border border-indigo-50 flex items-center gap-2">
+					<Sparkles size={16} className="text-indigo-400" />
+					<span className="text-slate-500 text-sm font-medium">
+						Bạn có {currentCoins.toLocaleString()} Xu
+					</span>
+				</div>
+				{user?.consecutiveRollsWithoutWin !== undefined &&
+					user.consecutiveRollsWithoutWin > 0 && (
+						<div className="bg-orange-50 backdrop-blur-sm p-3 rounded-2xl border border-orange-200 flex items-center gap-2">
+							<TrendingUp size={16} className="text-orange-500" />
+							<span className="text-orange-700 text-sm font-bold">
+								Pity: {user.consecutiveRollsWithoutWin} rolls since rare
+							</span>
+						</div>
+					)}
 			</div>
 		</div>
 	);

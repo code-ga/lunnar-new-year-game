@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, or } from "drizzle-orm";
 import Elysia, { t } from "elysia";
 import { db } from "../database";
 import { items, schema } from "../database/schema";
@@ -101,71 +101,229 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 						},
 					},
 				)
-				// Gacha Roll
+				// Gacha Roll - Group-based with Pity System
 				.post(
 					"/roll",
 					async ({ profile, status }) => {
 						if (profile.coins < COST) throw new Error("Not enough coins");
 
-						const allItems = await db
+						// Step 1: Get pity config from AppState
+						const [appState] = await db.select().from(schema.AppState).limit(1);
+						const pityConfig = appState?.state.pityConfig || {
+							enabled: false,
+							rollsUntilPity: 10,
+							boostFormula: "inverse" as const,
+							winThreshold: 500,
+						};
+
+						// Step 2: Get all active groups
+						const allGroups = await db
+							.select()
+							.from(schema.itemGroups)
+							.where(eq(schema.itemGroups.isActive, true));
+
+						if (allGroups.length === 0)
+							throw new Error("No groups available");
+
+						// Step 3: Calculate group chances with pity boost
+						const groupChances = await Promise.all(
+							allGroups.map(async (group) => {
+								// Check if group has available items
+								const groupItems = await db
+									.select()
+									.from(items)
+									.where(
+										and(
+											eq(items.groupId, group.id),
+											eq(items.isActive, true),
+											or(gt(items.quantity, 0), eq(items.quantity, -1)),
+										),
+									);
+
+								if (groupItems.length === 0) {
+									return { group, chance: 0 };
+								}
+
+								let chance = group.baseChance / 100; // Convert from basis points
+
+								// Apply pity boost
+								if (
+									pityConfig.enabled &&
+									profile.consecutiveRollsWithoutWin >= pityConfig.rollsUntilPity
+								) {
+									const pityMultiplier = Math.floor(
+										profile.consecutiveRollsWithoutWin / pityConfig.rollsUntilPity,
+									);
+									if (pityConfig.boostFormula === "inverse") {
+										// Lower chance groups get more boost (inverse relationship)
+										const boost = (1 / chance) * 0.1 * pityMultiplier;
+										chance += boost;
+									} else {
+										// Flat boost
+										chance += 0.5 * pityMultiplier;
+									}
+								}
+
+								return { group, chance };
+							}),
+						);
+
+						// Normalize chances to 100%
+						const totalChance = groupChances.reduce(
+							(sum, g) => sum + g.chance,
+							0,
+						);
+						if (totalChance === 0) throw new Error("No items available");
+
+						const normalizedGroupChances = groupChances.map((g) => ({
+							...g,
+							chance: g.chance / totalChance,
+						}));
+
+						// Step 4: Select group randomly
+						const rand = Math.random();
+						let cumulative = 0;
+						let selectedGroup = normalizedGroupChances[0].group;
+
+						for (const { group, chance } of normalizedGroupChances) {
+							cumulative += chance;
+							if (rand <= cumulative) {
+								selectedGroup = group;
+								break;
+							}
+						}
+
+						// Step 5: Get items in selected group
+						const groupItems = await db
 							.select()
 							.from(items)
-							.where(eq(items.isActive, true));
-						if (allItems.length === 0) throw new Error("No items available");
+							.where(
+								and(
+									eq(items.groupId, selectedGroup.id),
+									eq(items.isActive, true),
+									or(gt(items.quantity, 0), eq(items.quantity, -1)),
+								),
+							);
 
-						const rolledItem =
-							allItems[Math.floor(Math.random() * allItems.length)];
-						if (!rolledItem) throw new Error("Item not found");
+						if (groupItems.length === 0)
+							throw new Error("No items in selected group");
 
-						const userItems = await db.transaction(async (tx) => {
+						// Step 6: Calculate item chances within group
+						const infiniteItems = groupItems.filter((i) => i.quantity === -1);
+						const finiteItems = groupItems.filter((i) => i.quantity > 0);
+
+						let rolledItem: (typeof groupItems)[0];
+
+						if (infiniteItems.length > 0 && finiteItems.length > 0) {
+							// Mixed: infinite items use manual chance, finite items share remainder
+							const totalManualChance =
+								infiniteItems.reduce((sum, i) => sum + (i.manualChance || 0), 0) /
+								100;
+							const finiteChance = 1 - totalManualChance;
+							const totalFiniteQty = finiteItems.reduce(
+								(sum, i) => sum + i.quantity,
+								0,
+							);
+
+							const itemChances = [
+								...infiniteItems.map((i) => ({
+									item: i,
+									chance: (i.manualChance || 0) / 100,
+								})),
+								...finiteItems.map((i) => ({
+									item: i,
+									chance: finiteChance * (i.quantity / totalFiniteQty),
+								})),
+							];
+
+							const rand2 = Math.random();
+							let cumulative2 = 0;
+							for (const { item, chance } of itemChances) {
+								cumulative2 += chance;
+								if (rand2 <= cumulative2) {
+									rolledItem = item;
+									break;
+								}
+							}
+							rolledItem = rolledItem! || itemChances[0].item;
+						} else if (infiniteItems.length > 0) {
+							// All infinite: use manual chances (or equal distribution if not set)
+							const totalManualChance = infiniteItems.reduce(
+								(sum, i) => sum + (i.manualChance || 100 / infiniteItems.length),
+								0,
+							);
+							const rand2 = Math.random() * totalManualChance;
+							let cumulative2 = 0;
+							for (const item of infiniteItems) {
+								cumulative2 += item.manualChance || 100 / infiniteItems.length;
+								if (rand2 <= cumulative2) {
+									rolledItem = item;
+									break;
+								}
+							}
+							rolledItem = rolledItem! || infiniteItems[0];
+						} else {
+							// All finite: weighted by quantity
+							const totalQty = finiteItems.reduce((sum, i) => sum + i.quantity, 0);
+							const rand2 = Math.random() * totalQty;
+							let cumulative2 = 0;
+							for (const item of finiteItems) {
+								cumulative2 += item.quantity;
+								if (rand2 <= cumulative2) {
+									rolledItem = item;
+									break;
+								}
+							}
+							rolledItem = rolledItem! || finiteItems[0];
+						}
+
+						// Step 7: Execute transaction
+						const result = await db.transaction(async (tx) => {
+							// Deduct coins
 							await tx
 								.update(schema.profile)
 								.set({ coins: profile.coins - COST })
 								.where(eq(schema.profile.id, profile.id));
 
-							// const [existing] = await tx
-							// 	.select()
-							// 	.from(schema.userItems)
-							// 	.where(
-							// 		and(
-							// 			eq(schema.userItems.profileId, profile.id),
-							// 			eq(schema.userItems.itemId, rolledItem.id),
-							// 		),
-							// 	);
+							// Decrease quantity if finite
+							if (rolledItem.quantity > 0) {
+								await tx
+									.update(items)
+									.set({ quantity: rolledItem.quantity - 1 })
+									.where(eq(items.id, rolledItem.id));
+							}
 
-							// if (existing) {
-							// 	return await tx
-							// 		.update(schema.userItems)
-							// 		.set({ quantity: existing.quantity + 1 })
-							// 		.where(eq(schema.userItems.id, existing.id))
-							// 		.returning();
-							// } else {
-							// 	return await tx
-							// 		.insert(schema.userItems)
-							// 		.values({
-							// 			profileId: profile.id,
-							// 			itemId: rolledItem.id,
-							// 			quantity: 1,
-							// 		})
-							// 		.returning();
-							// }
-							// always insert a new user item
-							return await tx
+							// Create user item
+							const [userItem] = await tx
 								.insert(schema.userItems)
 								.values({
 									profileId: profile.id,
 									itemId: rolledItem.id,
 								})
 								.returning();
+
+							// Update pity counter
+							const isWin = selectedGroup.baseChance <= pityConfig.winThreshold;
+							const newPityCount = isWin
+								? 0
+								: profile.consecutiveRollsWithoutWin + 1;
+
+							await tx
+								.update(schema.profile)
+								.set({ consecutiveRollsWithoutWin: newPityCount })
+								.where(eq(schema.profile.id, profile.id));
+
+							return { userItem, newPityCount };
 						});
-						if (!userItems) throw new Error("Failed to update inventory");
 
 						return status(200, {
 							success: true,
 							data: {
 								rolledItem,
 								userCoins: profile.coins - COST,
-								userItems,
+								userItems: [result.userItem],
+								pityCount: result.newPityCount,
+								selectedGroup: selectedGroup.name,
 							},
 							timestamp: Date.now(),
 						});
@@ -177,6 +335,8 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 									rolledItem: Type.Object(dbSchemaTypes.items),
 									userCoins: Type.Number(),
 									userItems: Type.Array(Type.Object(dbSchemaTypes.userItems)),
+									pityCount: Type.Number(),
+									selectedGroup: Type.String(),
 								}),
 							),
 						},

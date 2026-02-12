@@ -1,10 +1,23 @@
-import { Edit2, Package, Plus, ShoppingCart, Trash2, X, MapPin, User as UserIcon } from "lucide-react";
+import {
+	Edit2,
+	Package,
+	Plus,
+	ShoppingCart,
+	Trash2,
+	X,
+	MapPin,
+	User as UserIcon,
+	Layers,
+	Settings,
+} from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useGameStore } from "../store/useGameStore";
 import ItemForm from "../components/ItemForm";
+import GroupForm from "../components/GroupForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { fetchApi, type SchemaType } from "../lib/api";
 import { useNavigate } from "react-router";
+import type { ItemGroup } from "../types";
 
 type OrderWithRelations = SchemaType["orders"] & {
 	profile: SchemaType["profile"] | null | undefined;
@@ -20,20 +33,37 @@ const statusLabel: Record<string, string> = {
 
 const AdminPage: React.FC = () => {
 	const { user } = useGameStore();
-	const [tab, setTab] = useState<"items" | "orders">("items");
+	const [tab, setTab] = useState<"items" | "groups" | "orders" | "settings">(
+		"items",
+	);
 	const [items, setItems] = useState<SchemaType["items"][]>([]);
+	const [groups, setGroups] = useState<ItemGroup[]>([]);
 	const [orders, setOrders] = useState<OrderWithRelations[]>([]);
+	const [pityConfig, setPityConfig] = useState({
+		enabled: true,
+		rollsUntilPity: 10,
+		boostFormula: "inverse" as const,
+		winThreshold: 500,
+	});
+	const [settingsLoading, setSettingsLoading] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [showCreate, setShowCreate] = useState(false);
 	const [showEdit, setShowEdit] = useState(false);
 	const [showDelete, setShowDelete] = useState(false);
+	const [showCreateGroup, setShowCreateGroup] = useState(false);
+	const [showEditGroup, setShowEditGroup] = useState(false);
+	const [showDeleteGroup, setShowDeleteGroup] = useState(false);
 	const [editingItem, setEditingItem] = useState<SchemaType["items"] | null>(
 		null,
 	);
 	const [deletingItem, setDeletingItem] = useState<SchemaType["items"] | null>(
 		null,
 	);
-	const [selectedOrder, setSelectedOrder] = useState<OrderWithRelations | null>(null);
+	const [editingGroup, setEditingGroup] = useState<ItemGroup | null>(null);
+	const [deletingGroup, setDeletingGroup] = useState<ItemGroup | null>(null);
+	const [selectedOrder, setSelectedOrder] = useState<OrderWithRelations | null>(
+		null,
+	);
 	const [statusLoading, setStatusLoading] = useState(false);
 
 	const navigate = useNavigate();
@@ -47,6 +77,20 @@ const AdminPage: React.FC = () => {
 					method: "GET",
 				});
 				if (res.data?.data) setItems(res.data.data);
+			} else if (tab === "groups") {
+				const res = await fetchApi(`/api/item-groups`, {
+					credentials: "include",
+					method: "GET",
+				});
+				if (res.data?.data) setGroups(res.data.data);
+			} else if (tab === "settings") {
+				const res = await fetchApi(`/api/app-state`, {
+					credentials: "include",
+					method: "GET",
+				});
+				if (res.data?.data?.pityConfig) {
+					setPityConfig(res.data.data.pityConfig);
+				}
 			} else {
 				const res = await fetchApi(`/api/orders`, {
 					credentials: "include",
@@ -58,6 +102,26 @@ const AdminPage: React.FC = () => {
 			console.error(e);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleSavePityConfig = async () => {
+		setSettingsLoading(true);
+		try {
+			const res = await fetchApi(`/api/app-state/pity-config`, {
+				method: "PATCH",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(pityConfig),
+			});
+			if (res.data?.success) {
+				alert("Cài đặt pity đã được lưu!");
+			}
+		} catch (e) {
+			console.error(e);
+			alert("Lỗi khi lưu cài đặt");
+		} finally {
+			setSettingsLoading(false);
 		}
 	};
 
@@ -84,7 +148,28 @@ const AdminPage: React.FC = () => {
 		}
 	};
 
-	const handleStatusChange = async (orderId: number, newStatus: "shipped" | "rejected") => {
+	const handleDeleteGroup = async () => {
+		if (!deletingGroup) return;
+		try {
+			const res = await fetchApi(`/api/item-groups/:id`, {
+				method: "DELETE",
+				credentials: "include",
+				params: { id: deletingGroup.id.toString() },
+			});
+			if (res.data?.success) {
+				setShowDeleteGroup(false);
+				setDeletingGroup(null);
+				fetchData();
+			}
+		} catch (e) {
+			console.error(e);
+		}
+	};
+
+	const handleStatusChange = async (
+		orderId: number,
+		newStatus: "shipped" | "rejected",
+	) => {
 		setStatusLoading(true);
 		try {
 			const res = await fetchApi(`/api/orders/:id/status`, {
@@ -138,10 +223,24 @@ const AdminPage: React.FC = () => {
 						</button>
 						<button
 							type="button"
+							onClick={() => setTab("groups")}
+							className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 ${tab === "groups" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+						>
+							<Layers size={18} /> Nhóm
+						</button>
+						<button
+							type="button"
 							onClick={() => setTab("orders")}
 							className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 ${tab === "orders" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
 						>
 							<ShoppingCart size={18} /> Đơn Hàng
+						</button>
+						<button
+							type="button"
+							onClick={() => setTab("settings")}
+							className={`px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 ${tab === "settings" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+						>
+							<Settings size={18} /> Cài Đặt
 						</button>
 					</div>
 				</header>
@@ -162,7 +261,7 @@ const AdminPage: React.FC = () => {
 						{items.map((item) => (
 							<div
 								key={item.id}
-								className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl transition-all h-64 flex flex-col"
+								className="bg-white rounded-3xl shadow-sm border border-slate-100 group hover:shadow-xl transition-all h-64 flex flex-col"
 							>
 								<div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
 									<div className="text-4xl mb-4 bg-slate-50 w-20 h-20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -208,8 +307,197 @@ const AdminPage: React.FC = () => {
 							</div>
 						))}
 					</div>
+				) : tab === "groups" ? (
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						<button
+							type="button"
+							onClick={() => setShowCreateGroup(true)}
+							className="h-48 border-4 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-purple-300 hover:text-purple-400 hover:bg-purple-50/30 transition-all group"
+						>
+							<div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+								<Plus size={32} />
+							</div>
+							<span className="font-black text-lg">Thêm Nhóm Mới</span>
+						</button>
+
+						{groups.map((group) => {
+							const totalChance = groups.reduce(
+								(sum, g) => sum + g.baseChance,
+								0,
+							);
+							const percentage =
+								(group.baseChance / 100 / (totalChance / 100)) * 100;
+
+							return (
+								<div
+									key={group.id}
+									className="bg-white rounded-3xl shadow-sm border border-slate-100 group hover:shadow-xl transition-all h-48 flex flex-col"
+								>
+									<div className="flex-1 p-6 flex flex-col justify-center items-center text-center gap-2">
+										<h3 className="font-black text-xl text-slate-800">
+											{group.name}
+										</h3>
+										<div className="text-sm text-slate-600">
+											Base: {(group.baseChance / 100).toFixed(2)}%
+										</div>
+										<div className="text-xs text-purple-500 font-bold">
+											Current: ~{percentage.toFixed(2)}% of total
+										</div>
+										{group.isEx && (
+											<div className="text-xs bg-black text-white px-2 py-1 rounded-full font-bold">
+												EX GROUP
+											</div>
+										)}
+									</div>
+									<div className="bg-slate-50 p-4 flex gap-2 border-t border-slate-100">
+										<button
+											type="button"
+											onClick={() => {
+												setEditingGroup(group);
+												setShowEditGroup(true);
+											}}
+											className="flex-1 bg-white border border-slate-200 py-2 rounded-xl text-slate-500 font-bold hover:bg-purple-50 hover:text-purple-600 transition-colors flex items-center justify-center gap-2"
+										>
+											<Edit2 size={14} /> Sửa
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												setDeletingGroup(group);
+												setShowDeleteGroup(true);
+											}}
+											className="p-2 bg-white border border-slate-200 rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+										>
+											<Trash2 size={16} />
+										</button>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				) : tab === "settings" ? (
+					<div className="max-w-2xl mx-auto">
+						<div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
+							<h2 className="text-2xl font-black text-slate-800 mb-6">
+								Cài Đặt Hệ Thống Pity
+							</h2>
+
+							<div className="space-y-6">
+								<label className="flex items-center gap-3">
+									<input
+										type="checkbox"
+										checked={pityConfig.enabled}
+										onChange={(e) =>
+											setPityConfig({
+												...pityConfig,
+												enabled: e.target.checked,
+											})
+										}
+										className="w-5 h-5"
+									/>
+									<span className="font-bold text-slate-700">
+										Kích hoạt hệ thống pity
+									</span>
+								</label>
+
+								<div>
+									<label
+										htmlFor="rollsUntilPity"
+										className="block font-bold text-slate-700 mb-2"
+									>
+										Số lần roll cần thiết để kích hoạt pity
+									</label>
+									<input
+										id="rollsUntilPity"
+										type="number"
+										min="1"
+										value={pityConfig.rollsUntilPity}
+										onChange={(e) =>
+											setPityConfig({
+												...pityConfig,
+												rollsUntilPity: Number(e.target.value),
+											})
+										}
+										className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="10"
+									/>
+									<p className="text-sm text-slate-500 mt-1">
+										Sau {pityConfig.rollsUntilPity} lần roll không trúng rare,
+										tỉ lệ sẽ tăng 0.1%
+									</p>
+								</div>
+
+								<div>
+									<label
+										htmlFor="boostFormula"
+										className="block font-bold text-slate-700 mb-2"
+									>
+										Công thức tăng tỉ lệ
+									</label>
+									<select
+										id="boostFormula"
+										value={pityConfig.boostFormula}
+										onChange={(e) =>
+											setPityConfig({
+												...pityConfig,
+												boostFormula: e.target.value as "inverse",
+											})
+										}
+										className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+									>
+										<option value="inverse">
+											Inverse (nhóm ít % tăng nhiều hơn)
+										</option>
+									</select>
+									<p className="text-sm text-slate-500 mt-1">
+										Công thức inverse: nhóm có tỉ lệ thấp sẽ được boost nhiều
+										hơn nhóm có tỉ lệ cao
+									</p>
+								</div>
+
+								<div>
+									<label
+										htmlFor="winThreshold"
+										className="block font-bold text-slate-700 mb-2"
+									>
+										Ngưỡng "win" (basis points)
+									</label>
+									<input
+										id="winThreshold"
+										type="number"
+										min="0"
+										max="10000"
+										step="10"
+										value={pityConfig.winThreshold}
+										onChange={(e) =>
+											setPityConfig({
+												...pityConfig,
+												winThreshold: Number(e.target.value),
+											})
+										}
+										className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="500"
+									/>
+									<p className="text-sm text-slate-500 mt-1">
+										Nhóm có base chance ≤{" "}
+										{(pityConfig.winThreshold / 100).toFixed(2)}% sẽ reset pity
+										counter (500 = 5%)
+									</p>
+								</div>
+
+								<button
+									type="button"
+									onClick={handleSavePityConfig}
+									disabled={settingsLoading}
+									className="w-full px-6 py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+								>
+									{settingsLoading ? "Đang lưu..." : "Lưu Cài Đặt"}
+								</button>
+							</div>
+						</div>
+					</div>
 				) : (
-					<div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+					<div className="bg-white rounded-3xl shadow-sm border border-slate-100">
 						<table className="w-full text-left">
 							<thead className="bg-slate-50 border-b border-slate-100">
 								<tr>
@@ -298,7 +586,10 @@ const AdminPage: React.FC = () => {
 			{/* Order Detail Modal */}
 			{selectedOrder && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center">
-					<div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedOrder(null)} />
+					<div
+						className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+						onClick={() => setSelectedOrder(null)}
+					/>
 					<div className="bg-white rounded-3xl shadow-2xl p-6 z-10 w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
 						<button
 							type="button"
@@ -424,7 +715,9 @@ const AdminPage: React.FC = () => {
 									<button
 										type="button"
 										disabled={statusLoading}
-										onClick={() => handleStatusChange(selectedOrder.id, "shipped")}
+										onClick={() =>
+											handleStatusChange(selectedOrder.id, "shipped")
+										}
 										className="flex-1 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition disabled:opacity-50"
 									>
 										{statusLoading ? "Đang xử lý..." : "Đã gửi hàng"}
@@ -432,7 +725,9 @@ const AdminPage: React.FC = () => {
 									<button
 										type="button"
 										disabled={statusLoading}
-										onClick={() => handleStatusChange(selectedOrder.id, "rejected")}
+										onClick={() =>
+											handleStatusChange(selectedOrder.id, "rejected")
+										}
 										className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition disabled:opacity-50"
 									>
 										{statusLoading ? "Đang xử lý..." : "Từ chối"}
@@ -465,6 +760,30 @@ const AdminPage: React.FC = () => {
 					message={`Xóa vật phẩm "${deletingItem.name}"? Hành động không thể hoàn tác.`}
 					onConfirm={handleDelete}
 					onClose={() => setShowDelete(false)}
+				/>
+			)}
+
+			{showCreateGroup && (
+				<GroupForm
+					onClose={() => setShowCreateGroup(false)}
+					onSaved={() => fetchData()}
+				/>
+			)}
+			{showEditGroup && editingGroup && (
+				<GroupForm
+					group={editingGroup}
+					onClose={() => {
+						setShowEditGroup(false);
+						setEditingGroup(null);
+					}}
+					onSaved={() => fetchData()}
+				/>
+			)}
+			{showDeleteGroup && deletingGroup && (
+				<ConfirmDialog
+					message={`Xóa nhóm "${deletingGroup.name}"? Tất cả vật phẩm trong nhóm sẽ không có nhóm. Hành động không thể hoàn tác.`}
+					onConfirm={handleDeleteGroup}
+					onClose={() => setShowDeleteGroup(false)}
 				/>
 			)}
 		</>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { Flame, Check, Copy, X, Lock, Share2, MapPin, Plus } from "lucide-react";
 import { useSearchParams, Link } from "react-router";
-import { RARITY_CONFIG } from "../constants";
+import { getItemDisplayConfig } from "../constants";
 import { useGameStore } from "../store/useGameStore";
 import { fetchApi, type SchemaType } from "../lib/api";
 import ShippingForm, { type ShippingValues } from "../components/ShippingForm";
@@ -207,11 +207,9 @@ const CollectionView: React.FC = () => {
 							<Suspense fallback={<div>Đang tải túi đồ...</div>}>
 								{inventory.map(async (item) => {
 									const template = await getItemTemplate(item.itemId);
-									const config =
-										RARITY_CONFIG[
-											template.rarity as keyof typeof RARITY_CONFIG
-										] || RARITY_CONFIG["E"];
-									const isEx = template.rarity === "EX";
+									const config = getItemDisplayConfig(template);
+									const isEx =
+										template.isEx || (template as any).group?.isEx;
 									return (
 										<button
 											type="button"
@@ -233,7 +231,7 @@ const CollectionView: React.FC = () => {
 												<div
 													className={`z-10 w-10 h-10 rounded-full ${config.color} text-white flex items-center justify-center font-black text-xs shadow-sm ${isEx ? "ex-gradient" : ""}`}
 												>
-													{template.rarity}
+													{(template as any).group?.name || template.rarity}
 												</div>
 												<div className="z-10 text-[9px] text-slate-400 font-mono bg-slate-50 px-1 rounded">
 													#{item.uniqueId.slice(-4)}
@@ -249,9 +247,7 @@ const CollectionView: React.FC = () => {
 					<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-20">
 						{templates.map((t) => {
 							const isOwned = ownedTemplateIds.has(t.id);
-							const config =
-								RARITY_CONFIG[t.rarity as keyof typeof RARITY_CONFIG] ||
-								RARITY_CONFIG["E"];
+							const config = getItemDisplayConfig(t);
 							return (
 								<div
 									key={t.id}
@@ -275,7 +271,7 @@ const CollectionView: React.FC = () => {
 									<span
 										className={`text-[9px] font-black uppercase tracking-widest ${isOwned ? config.color.replace("bg-", "text-") : "text-slate-400"}`}
 									>
-										{t.rarity} Rank
+										{(t as any).group?.name || t.rarity}
 									</span>
 								</div>
 							);
@@ -300,9 +296,10 @@ const CollectionView: React.FC = () => {
 							{selectedItem.template.name}
 						</h2>
 						<div
-							className={`inline-block px-3 py-1 rounded-full text-xs font-black text-white ${RARITY_CONFIG[selectedItem.template.rarity as keyof typeof RARITY_CONFIG]?.color || "bg-slate-500"} mb-6`}
+							className={`inline-block px-3 py-1 rounded-full text-xs font-black text-white ${getItemDisplayConfig(selectedItem.template).color || "bg-slate-500"} mb-6`}
 						>
-							RANK {selectedItem.template.rarity}
+							{(selectedItem.template as any).group?.name ||
+							selectedItem.template.rarity}
 						</div>
 
 						<div className="p-6 bg-slate-50 rounded-2xl mb-8 border border-slate-200">

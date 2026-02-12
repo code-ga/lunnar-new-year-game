@@ -1,4 +1,4 @@
-import type { Rarity, RarityConfig } from "./types";
+import type { Rarity, RarityConfig, GroupConfig } from "./types";
 
 export const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
 	E: {
@@ -73,6 +73,43 @@ export const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
 //   { id: 13, name: "Nhung Hoàng Gia", rarity: "SSS" },
 //   { id: 14, name: "Giấc Mơ Vũ Trụ", rarity: "EX" },
 // ];
+
+export const GROUP_CONFIG: Record<string, GroupConfig> = {
+	"Common (E-D)": {
+		color: "bg-slate-400",
+		border: "border-slate-500",
+	},
+	"Uncommon (C-B)": {
+		color: "bg-green-500",
+		border: "border-green-600",
+	},
+	"Rare (A)": {
+		color: "bg-purple-500",
+		border: "border-purple-600",
+	},
+	"Epic (S-SS)": {
+		color: "bg-orange-500",
+		border: "border-orange-600",
+	},
+	"Legendary (SSS)": {
+		color: "bg-red-600",
+		border: "border-red-700",
+	},
+	"Cosmic (EX)": {
+		color: "bg-black",
+		border: "border-white",
+		gradient: "ex-gradient",
+	},
+};
+
+// Helper to get display config (supports both new group system and old rarity for backward compat)
+export const getItemDisplayConfig = (item: any) => {
+	if (item.group?.name) {
+		return GROUP_CONFIG[item.group.name] || GROUP_CONFIG["Common (E-D)"];
+	}
+	// Fallback to old rarity system during migration
+	return RARITY_CONFIG[item.rarity as Rarity] || RARITY_CONFIG.E;
+};
 
 export const GACHA_COST = 100;
 export const DAILY_REWARD = 500;

@@ -86,6 +86,9 @@ export const profile = pgTable("profile", {
 	permission: permissionEnum("permission").array().default(["user"]).notNull(),
 	coins: integer("coins").default(0).notNull(),
 	lastCheckIn: timestamp("last_check_in"),
+	consecutiveRollsWithoutWin: integer("consecutive_rolls_without_win")
+		.default(0)
+		.notNull(),
 
 	defaultShippingInfoId: integer("default_shipping_info_id"),
 
@@ -111,12 +114,32 @@ export const shippingInfo = pgTable("shipping_info", {
 		.notNull(),
 });
 
+export const itemGroups = pgTable("item_groups", {
+	id: serial("id").primaryKey(),
+	name: text("name").notNull(),
+	baseChance: integer("base_chance").notNull(),
+	isEx: boolean("is_ex").default(false).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at")
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
 export const items = pgTable("items", {
 	id: serial("id").primaryKey(),
 	name: text("name").notNull(),
 	description: text("description"),
 	image: text("image"),
 	rarity: text("rarity").default("Common").notNull(),
+	groupId: integer("group_id").references(() => itemGroups.id, {
+		onDelete: "set null",
+	}),
+	quantity: integer("quantity").default(-1).notNull(),
+	manualChance: integer("manual_chance"),
+	adminNote: text("admin_note"),
+	isEx: boolean("is_ex").default(false).notNull(),
 	isActive: boolean("is_active").default(true).notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at")
@@ -187,14 +210,29 @@ export const exchanges = pgTable("exchanges", {
 
 export interface AppState {
 	createNewAdmin: boolean;
+	pityConfig: {
+		enabled: boolean;
+		rollsUntilPity: number;
+		boostFormula: "inverse";
+		winThreshold: number;
+	};
 }
 
 export const AppState = pgTable("app_state", {
 	id: serial("id").primaryKey(),
 
-	state: jsonb("state").notNull().$type<AppState>().default({
-		createNewAdmin: true,
-	}),
+	state: jsonb("state")
+		.notNull()
+		.$type<AppState>()
+		.default({
+			createNewAdmin: true,
+			pityConfig: {
+				enabled: true,
+				rollsUntilPity: 10,
+				boostFormula: "inverse" as const,
+				winThreshold: 500,
+			},
+		}),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at")
 		.defaultNow()
@@ -209,6 +247,7 @@ export const schema = {
 	verification,
 	profile,
 	shippingInfo,
+	itemGroups,
 	items,
 	userItems,
 	orders,
@@ -261,7 +300,17 @@ export const relations = defineRelations(schema, (r) => ({
 			to: r.profile.id,
 		}),
 	},
+	itemGroups: {
+		items: r.many.items({
+			from: r.itemGroups.id,
+			to: r.items.groupId,
+		}),
+	},
 	items: {
+		group: r.one.itemGroups({
+			from: r.items.groupId,
+			to: r.itemGroups.id,
+		}),
 		userItems: r.many.userItems({
 			from: r.items.id,
 			to: r.userItems.itemId,

@@ -60,7 +60,7 @@ export const shippingInfoRouter = new Elysia({ prefix: "/shipping-info" })
 								.where(eq(profile.id, p.id));
 						}
 
-						return status(201, {
+						return status(200, {
 							success: true,
 							data: created,
 							timestamp: Date.now(),
@@ -74,7 +74,7 @@ export const shippingInfoRouter = new Elysia({ prefix: "/shipping-info" })
 							note: t.Optional(t.String()),
 						}),
 						response: {
-							201: baseResponseSchema(
+							200: baseResponseSchema(
 								Type.Optional(Type.Object(dbSchemaTypes.shippingInfo)),
 							),
 						},

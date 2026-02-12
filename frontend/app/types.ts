@@ -1,12 +1,28 @@
 // import type { SchemaType } from "./lib/api";
 
-export type Rarity = "E" | "D" | "C" | "B" | "A" | "S" | "SS" | "SSS" | "EX";
+export type Rarity = "E" | "D" | "C" | "B" | "A" | "S" | "SS" | "SSS" | "EX"; // DEPRECATED
 
 export interface RarityConfig {
 	color: string;
 	border: string;
 	chance: number;
 	value: number;
+}
+
+export interface ItemGroup {
+	id: number;
+	name: string;
+	baseChance: number;
+	isEx: boolean;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface GroupConfig {
+	color: string;
+	border: string;
+	gradient?: string;
 }
 
 // export interface PillowTemplate {

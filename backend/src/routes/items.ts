@@ -1,7 +1,7 @@
 import Elysia, { t } from "elysia";
 import { db } from "../database";
 import { items } from "../database/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, or, gt } from "drizzle-orm";
 import { authenticationMiddleware } from "../middleware/auth";
 import { baseResponseSchema } from "../types";
 import { Type } from "@sinclair/typebox";
@@ -45,6 +45,31 @@ export const itemsRouter = new Elysia({ prefix: "/items" })
 			},
 		},
 	)
+	.get(
+		"/by-group/:groupId",
+		async ({ params: { groupId }, status }) => {
+			const groupItems = await db
+				.select()
+				.from(items)
+				.where(
+					and(
+						eq(items.groupId, parseInt(groupId)),
+						eq(items.isActive, true),
+					),
+				);
+			return status(200, {
+				success: true,
+				data: groupItems,
+				timestamp: Date.now(),
+			});
+		},
+		{
+			params: t.Object({ groupId: t.String() }),
+			response: {
+				200: baseResponseSchema(Type.Array(Type.Object(dbSchemaTypes.items))),
+			},
+		},
+	)
 	.use(authenticationMiddleware)
 	.guard(
 		{
@@ -68,6 +93,11 @@ export const itemsRouter = new Elysia({ prefix: "/items" })
 							description: t.Optional(t.String()),
 							image: t.Optional(t.String()),
 							rarity: t.Optional(t.String()),
+							groupId: t.Optional(t.Number()),
+							quantity: t.Optional(t.Number()),
+							manualChance: t.Optional(t.Number()),
+							adminNote: t.Optional(t.String()),
+							isEx: t.Optional(t.Boolean()),
 							isActive: t.Optional(t.Boolean()),
 						}),
 						response: {
@@ -98,6 +128,11 @@ export const itemsRouter = new Elysia({ prefix: "/items" })
 							description: t.Optional(t.String()),
 							image: t.Optional(t.String()),
 							rarity: t.Optional(t.String()),
+							groupId: t.Optional(t.Number()),
+							quantity: t.Optional(t.Number()),
+							manualChance: t.Optional(t.Number()),
+							adminNote: t.Optional(t.String()),
+							isEx: t.Optional(t.Boolean()),
 							isActive: t.Optional(t.Boolean()),
 						}),
 						response: {
