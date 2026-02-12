@@ -14,53 +14,88 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 			profileAuth: true,
 		},
 		(app) =>
-			app.post(
-				"/",
-				async ({ profile, body }) => {
-					const { itemId } = body;
+			app
+				.post(
+					"/",
+					async ({ profile, body }) => {
+						const { userItemId, shippingInfoId } = body;
 
-					// Check if user has the item
-					const [existing] = await db
-						.select()
-						.from(userItems)
-						.where(
-							and(
-								eq(userItems.profileId, profile.id),
-								eq(userItems.itemId, itemId),
-							),
-						);
+						// Check if user has the item
+						const [existing] = await db
+							.select()
+							.from(userItems)
+							.where(
+								and(
+									eq(userItems.profileId, profile.id),
+									eq(userItems.id, userItemId),
+								),
+							);
 
-					if (!existing || existing.quantity <= 0) {
-						throw new Error("Item not found in inventory");
-					}
-
-					// atomicity-ish (simplified for this task)
-					await db.transaction(async (tx) => {
-						if (existing.quantity > 1) {
-							await tx
-								.update(userItems)
-								.set({ quantity: existing.quantity - 1 })
-								.where(eq(userItems.id, existing.id));
-						} else {
-							await tx.delete(userItems).where(eq(userItems.id, existing.id));
+						if (!existing) {
+							throw new Error("Item not found in inventory");
 						}
 
-						await tx.insert(orders).values({
-							itemId: itemId,
-							status: "pending",
-							profileId: profile.id,
+						await db.transaction(async (tx) => {
+							await tx.delete(userItems).where(eq(userItems.id, existing.id));
+							return await tx
+								.insert(orders)
+								.values({
+									itemId: existing.itemId,
+									status: "pending",
+									profileId: profile.id,
+									shippingInfoId: shippingInfoId,
+								})
+								.returning();
 						});
-					});
 
-					return { success: true };
-				},
-				{
-					body: t.Object({
-						itemId: t.Number(),
-					}),
-					response: t.Object({ success: t.Boolean() }),
-				},
-			),
+						return { success: true };
+					},
+					{
+						body: t.Object({
+							userItemId: t.Number(),
+							shippingInfoId: t.Optional(t.Number()),
+						}),
+						response: t.Object({ success: t.Boolean() }),
+					},
+				)
+				.get(
+					"/mine",
+					async ({ profile, status }) => {
+						const data = await db.query.orders.findMany({
+							where: { profileId: profile.id },
+							with: {
+								item: true,
+								shippingInfo: true,
+							},
+						});
+						return status(200, {
+							success: true,
+							data,
+							timestamp: Date.now(),
+						});
+					},
+					{
+						response: {
+							200: baseResponseSchema(
+								Type.Array(
+									Type.Object({
+										...dbSchemaTypes.orders,
+										item: Type.Union([
+											Type.Optional(Type.Object(dbSchemaTypes.items)),
+											Type.Null(),
+											Type.Undefined(),
+										]),
+										shippingInfo: Type.Union([
+											Type.Optional(Type.Object(dbSchemaTypes.shippingInfo)),
+											Type.Null(),
+											Type.Undefined(),
+										]),
+									}),
+								),
+							),
+						},
+					},
+				),
 	)
 	.guard(
 		{
@@ -75,6 +110,7 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 							with: {
 								profile: true,
 								item: true,
+								shippingInfo: true,
 							},
 						});
 						return status(200, {
@@ -94,9 +130,13 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 											Type.Null(),
 											Type.Undefined(),
 										]),
-
 										item: Type.Union([
 											Type.Optional(Type.Object(dbSchemaTypes.items)),
+											Type.Null(),
+											Type.Undefined(),
+										]),
+										shippingInfo: Type.Union([
+											Type.Optional(Type.Object(dbSchemaTypes.shippingInfo)),
 											Type.Null(),
 											Type.Undefined(),
 										]),

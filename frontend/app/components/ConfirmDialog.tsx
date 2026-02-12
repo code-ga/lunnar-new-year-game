@@ -21,12 +21,14 @@ const ConfirmDialog: React.FC<Props> = ({
 				<p className="text-slate-500 mt-2">{message}</p>
 				<div className="mt-6 flex justify-end gap-3">
 					<button
+						type="button"
 						className="px-4 py-2 rounded-xl bg-slate-100"
 						onClick={onClose}
 					>
 						Hủy
 					</button>
 					<button
+						type="button"
 						className="px-4 py-2 rounded-xl bg-red-500 text-white"
 						onClick={onConfirm}
 					>

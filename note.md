@@ -1,0 +1,2 @@
+- [ ] làm trang tra cứu shipping 
+- [ ] thêm tỉ lệ quay bla bla

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Gift, AlertCircle, CheckCircle2 } from "lucide-react";
-// import type { InventoryItem } from "../types";
 import { useGameStore } from "../store/useGameStore";
-import type { SchemaType } from "../lib/api";
+import { fetchApi, type SchemaType } from "../lib/api";
 
 const ExchangeView: React.FC = () => {
-	const { addInventoryItem, templates, fetchTemplates } = useGameStore();
+	const { templates, fetchTemplates, fetchUserData } = useGameStore();
 	const [code, setCode] = useState("");
 	const [status, setStatus] = useState<{
 		type: "success" | "error";
@@ -18,35 +17,37 @@ const ExchangeView: React.FC = () => {
 		}
 	}, [templates, fetchTemplates]);
 
-	const handleImport = () => {
+	const handleImport = async () => {
 		const inputCode = code.trim().toUpperCase();
 		if (!inputCode.startsWith("PIL-")) {
 			setStatus({ type: "error", msg: "Mã code phải bắt đầu bằng PIL-" });
 			return;
 		}
-		const parts = inputCode.split("-");
-		if (parts.length < 4) {
-			setStatus({ type: "error", msg: "Mã code không đúng định dạng." });
-			return;
-		}
 
-		const templateId = parseInt(parts[1]);
-		const template = templates.find((t) => t.id === templateId);
-
-		if (template) {
-			const newItem: SchemaType["userItems"] = {
-				...template,
-				uniqueId: Math.random().toString(36).substring(2, 9).toUpperCase(),
-				obtainedAt: Date.now(),
-			};
-			addInventoryItem(newItem);
-			setStatus({
-				type: "success",
-				msg: `Thành công! Bạn nhận được: ${template.name}`,
+		try {
+			const res = await fetchApi("/api/exchanges/claim", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: { code: inputCode },
+				credentials: "include",
 			});
-			setCode("");
-		} else {
-			setStatus({ type: "error", msg: "Vật phẩm không tồn tại." });
+
+			if (res.data?.success && res.data.data?.item) {
+				setStatus({
+					type: "success",
+					msg: `Thành công! Bạn nhận được: ${res.data.data.item.name}`,
+				});
+				setCode("");
+				await fetchUserData(); // Refresh inventory from backend
+			} else {
+				setStatus({
+					type: "error",
+					msg:
+						res.error?.message || "Mã code không hợp lệ hoặc đã được sử dụng",
+				});
+			}
+		} catch (e) {
+			setStatus({ type: "error", msg: "Lỗi kết nối server" });
 		}
 	};
 
@@ -107,9 +108,12 @@ const ExchangeView: React.FC = () => {
 					Thông tin mã code
 				</h4>
 				<ul className="text-xs text-slate-600 space-y-2 font-medium">
-					<li>• Mã code có thể được nhận khi bạn "Đốt" gối ôm trong túi đồ.</li>
+					<li>
+						• Mã code có thể được nhận khi bạn chọn "Chia sẻ" gối ôm trong túi
+						đồ.
+					</li>
 					<li>• Mỗi mã code có chứa thông tin về loại gối và độ hiếm.</li>
-					<li>• Sau khi nhập, ID gối sẽ được tạo mới hoàn toàn.</li>
+					<li>• Sau khi nhập, vật phẩm sẽ được chuyển vào túi đồ của bạn.</li>
 				</ul>
 			</div>
 		</div>

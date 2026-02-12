@@ -5,6 +5,8 @@ import { profileRouter } from "./profile";
 import { itemsRouter } from "./items";
 import { ordersRouter } from "./orders";
 import { gameRouter } from "./game";
+import { exchangesRouter } from "./exchanges";
+import { shippingInfoRouter } from "./shipping-info";
 
 const apiRouter = new Elysia({ prefix: "/api" })
 	.use(betterAuthRouter)
@@ -12,6 +14,8 @@ const apiRouter = new Elysia({ prefix: "/api" })
 	.use(profileRouter)
 	.use(itemsRouter)
 	.use(ordersRouter)
-	.use(gameRouter);
+	.use(gameRouter)
+	.use(exchangesRouter)
+	.use(shippingInfoRouter);
 
 export { apiRouter };

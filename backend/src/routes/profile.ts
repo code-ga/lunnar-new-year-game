@@ -40,11 +40,17 @@ export const profileRouter = new Elysia({
 							.from(schema.userItems)
 							.where(eq(schema.userItems.profileId, profile[0].id));
 
+						const shippingInfos = await db
+							.select()
+							.from(schema.shippingInfo)
+							.where(eq(schema.shippingInfo.profileId, profile[0].id));
+
 						return ctx.status(200, {
 							status: 200,
 							data: {
 								profile: profile[0],
 								inventory: inventory,
+								shippingInfos: shippingInfos,
 							},
 							message: "Profile fetched successfully",
 							timestamp: Date.now(),
@@ -60,6 +66,7 @@ export const profileRouter = new Elysia({
 								Type.Object({
 									profile: Type.Object(dbSchemaTypes.profile),
 									inventory: Type.Array(Type.Object(dbSchemaTypes.userItems)),
+									shippingInfos: Type.Array(Type.Object(dbSchemaTypes.shippingInfo)),
 								}),
 							),
 							404: errorResponseSchema,
@@ -130,7 +137,11 @@ export const profileRouter = new Elysia({
 					async (ctx) => {
 						const profile = await db
 							.update(schema.profile)
-							.set({ userId: ctx.user.id, username: ctx.body.username })
+							.set({
+								userId: ctx.user.id,
+								username: ctx.body.username,
+								defaultShippingInfoId: ctx.body.defaultShippingInfoId,
+							})
 							.where(eq(schema.profile.userId, ctx.user.id))
 							.returning();
 						if (!profile || !profile[0]) {
@@ -152,6 +163,7 @@ export const profileRouter = new Elysia({
 					{
 						body: Type.Object({
 							username: dbSchemaTypes.profile.username,
+							defaultShippingInfoId: Type.Optional(dbSchemaTypes.profile.defaultShippingInfoId),
 						}),
 						response: {
 							200: baseResponseSchema(Type.Object(dbSchemaTypes.profile)),
@@ -227,13 +239,6 @@ export const profileRouter = new Elysia({
 						},
 					},
 				),
-		// .delete("/", async ({ user }) => {
-		// 	const profile = await db
-		// 		.delete(schema.profile)
-		// 		.where(eq(schema.profile.userId, user.id))
-		// 		.returning();
-		// 	return profile;
-		// }),
 	)
 	.guard({ roleAuth: ["admin"] }, (app) =>
 		app
@@ -261,27 +266,6 @@ export const profileRouter = new Elysia({
 						ctx.body.permission.includes("admin") &&
 						!alreadyHasRole[0].permission.includes("admin")
 					) {
-						// Optionally allow managers to add admin if they are admin?
-						// For now, let's keep the logic simple or just warn.
-						// The original code was:
-						// return ctx.status(400, { message: "Profile already has admin role" });
-						// Wait, current logic prevents adding "admin" if already has it? No.
-						// "if (ctx.body.permission.includes("admin") && !alreadyHasRole[0].permission.includes("admin"))" ??
-						// Actually line 246-249 in original: checking if we are ADDING admin?
-						// Wait, the original logic was:
-						// if (includes("admin") && !alreadyHas_admin) ... ERROR?
-						// "Profile already has admin role" -> this error message implies the opposite check.
-						// If I try to add "admin" and user DOES NOT have it, it returns "Already has admin role"? That's a bug in original code or I misread.
-
-						// Original:
-						// if (ctx.body.permission.includes("admin") && !alreadyHasRole[0].permission.includes("admin")) {
-						//    return ... "Profile already has admin role"
-						// }
-						// This logic seems reversed or the message is wrong.
-						// If I *add* admin, and they *don't* have it, it errors? So I CANNOT add admin?
-						// This might be a safeguard to prevent managers from creating admins.
-						// I will preserve this logic for now but fix the target user.
-
 						return ctx.status(400, {
 							status: 400,
 							message: "Cannot verify admin privilege or action not allowed",
@@ -491,6 +475,59 @@ export const profileRouter = new Elysia({
 				{
 					response: {
 						200: baseResponseSchema(Type.Array(Type.String())),
+						400: errorResponseSchema,
+					},
+					roleAuth: ["admin"],
+				},
+			)
+			.get(
+				"/contact_info/:profileId",
+				async (ctx) => {
+					const profile = await db.query.profile.findMany({
+						where: {
+							id: ctx.params.profileId,
+						},
+						with: {
+							user: {
+								with: {
+									account: true,
+									verification: true,
+								},
+							},
+						},
+					});
+					profile;
+					return ctx.status(200, {
+						status: 200,
+						data: profile,
+						message: "Contact info fetched successfully",
+						timestamp: Date.now(),
+						success: true,
+					});
+				},
+				{
+					params: Type.Object({
+						profileId: dbSchemaTypes.profile.id,
+					}),
+					response: {
+						200: baseResponseSchema(
+							Type.Array(
+								Type.Object({
+									...dbSchemaTypes.profile,
+									user: Type.Union([
+										Type.Object({
+											...dbSchemaTypes.user,
+											account: Type.Array(Type.Object(dbSchemaTypes.account)),
+											verification: Type.Array(
+												Type.Object(dbSchemaTypes.verification),
+											),
+										}),
+										Type.Null(),
+										Type.Undefined(),
+									]),
+								}),
+							),
+						),
 						400: errorResponseSchema,
 					},
 					roleAuth: ["admin"],

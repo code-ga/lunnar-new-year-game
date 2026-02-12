@@ -1,14 +1,18 @@
 import React, { useState, useEffect, Suspense } from "react";
-import { Flame, Check, Copy, X, Lock } from "lucide-react";
-// import type { InventoryItem } from "../types";
+import { Flame, Check, Copy, X, Lock, Share2, MapPin, Plus } from "lucide-react";
+import { useSearchParams, Link } from "react-router";
 import { RARITY_CONFIG } from "../constants";
 import { useGameStore } from "../store/useGameStore";
 import { fetchApi, type SchemaType } from "../lib/api";
+import ShippingForm, { type ShippingValues } from "../components/ShippingForm";
 
 const CollectionView: React.FC = () => {
-	const { inventory, templates, fetchUserData, fetchTemplates } =
+	const { inventory, templates, fetchUserData, fetchTemplates, user, shippingInfos } =
 		useGameStore();
-	const [subTab, setSubTab] = useState<"inventory" | "catalog">("inventory");
+	const [searchParams] = useSearchParams();
+	const [subTab, setSubTab] = useState<"inventory" | "catalog">(
+		searchParams.get("tab") === "catalog" ? "catalog" : "inventory",
+	);
 	const [selectedItem, setSelectedItem] = useState<{
 		template: SchemaType["items"];
 		userItem: SchemaType["userItems"];
@@ -17,6 +21,14 @@ const CollectionView: React.FC = () => {
 		full: string;
 		masked: string;
 	} | null>(null);
+	const [shippingItem, setShippingItem] = useState<{
+		template: SchemaType["items"];
+		userItem: SchemaType["userItems"];
+	} | null>(null);
+	const [orderLoading, setOrderLoading] = useState(false);
+	const [selectedShippingId, setSelectedShippingId] = useState<number | null>(null);
+	const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+	const [newAddressLoading, setNewAddressLoading] = useState(false);
 
 	useEffect(() => {
 		if (templates.length === 0) {
@@ -26,35 +38,103 @@ const CollectionView: React.FC = () => {
 
 	const ownedTemplateIds = new Set(inventory.map((i) => i.id));
 
-	const handleBurn = async (item: {
+	const handleRequestBurn = (item: {
+		template: SchemaType["items"];
+		userItem: SchemaType["userItems"];
+	}) => {
+		setSelectedItem(null);
+		// Pre-select default shipping info
+		setSelectedShippingId(user?.defaultShippingInfoId ?? null);
+		setShowNewAddressForm(false);
+		setShippingItem(item);
+	};
+
+	const handleConfirmOrder = async () => {
+		if (!shippingItem) return;
+		setOrderLoading(true);
+		try {
+			const res = await fetchApi("/api/orders", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: {
+					userItemId: shippingItem.userItem.id,
+					shippingInfoId: selectedShippingId ?? undefined,
+				},
+				credentials: "include",
+			});
+
+			if (res.data?.success) {
+				const fullCode = `PIL-${shippingItem.template.id}-${shippingItem.template.rarity}-${shippingItem.userItem.uniqueId}`;
+				const maskedCode = `PIL-${shippingItem.template.id}-${shippingItem.template.rarity}-******`;
+
+				setShippingItem(null);
+				setBurnedCode({ full: fullCode, masked: maskedCode });
+				await fetchUserData();
+			} else {
+				const err = res.error
+					? JSON.stringify(res.error)
+					: "Không thể đốt vật phẩm";
+				alert(err || "Không thể đốt vật phẩm");
+			}
+		} catch (e) {
+			alert("Lỗi kết nối server");
+		} finally {
+			setOrderLoading(false);
+		}
+	};
+
+	const handleCreateAndSelect = async (values: ShippingValues) => {
+		setNewAddressLoading(true);
+		try {
+			const res = await fetchApi("/api/shipping-info", {
+				method: "POST",
+				body: values,
+				credentials: "include",
+			});
+			if (res.data?.success && res.data.data) {
+				await fetchUserData();
+				setSelectedShippingId(res.data.data.id);
+				setShowNewAddressForm(false);
+			}
+		} catch (e) {
+			alert("Lỗi khi tạo địa chỉ mới");
+		} finally {
+			setNewAddressLoading(false);
+		}
+	};
+
+	const handleShare = async (item: {
 		template: SchemaType["items"];
 		userItem: SchemaType["userItems"];
 	}) => {
 		if (
 			!confirm(
-				"Bạn có chắc chắn muốn 'Đốt' vật phẩm này để lấy mã trao đổi? Vật phẩm sẽ biến mất vĩnh viễn.",
+				"Bạn có chắc chắn muốn tạo mã quà tặng? Vật phẩm sẽ biến mất khỏi túi đồ của bạn.",
 			)
 		)
 			return;
 
 		try {
-			const res = await fetchApi("/api/orders", {
+			const res = await fetchApi("/api/exchanges", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: { itemId: item.template.id },
+				body: { userItemId: item.userItem.id },
 				credentials: "include",
 			});
 
-			if (res.data?.success) {
-				const fullCode = `PIL-${item.template.id}-${item.template.rarity}-${item.userItem.uniqueId}`;
-				const maskedCode = `PIL-${item.template.id}-${item.template.rarity}-******`;
+			if (res.data?.success && res.data.data?.code) {
+				const fullCode = res.data.data.code;
+				const parts = fullCode.split("-");
+				const maskedCode = `${parts[0]}-${parts[1]}-${parts[2]}-******`;
 
 				setBurnedCode({ full: fullCode, masked: maskedCode });
-				await fetchUserData(); // Refresh inventory
+				await fetchUserData();
 			} else {
-				const err = res.error?.message;
-				alert(err || "Không thể đốt vật phẩm");
-			}``
+				const err = res.error
+					? JSON.stringify(res.error)
+					: "Không thể tạo mã quà tặng";
+				alert(err || "Không thể tạo mã quà tặng");
+			}
 		} catch (e) {
 			alert("Lỗi kết nối server");
 		}
@@ -63,7 +143,6 @@ const CollectionView: React.FC = () => {
 		const template = templates.find((t) => t.id === itemId);
 		if (template) return template;
 
-		// Fetch template if not found
 		try {
 			const res = await fetchApi(`/api/items/:id`, {
 				credentials: "include",
@@ -235,20 +314,123 @@ const CollectionView: React.FC = () => {
 							</p>
 						</div>
 
+						<div className="space-y-3">
+							<button
+								type="button"
+								onClick={() => {
+									handleShare(selectedItem);
+									setSelectedItem(null);
+								}}
+								className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl hover:bg-indigo-100 transition flex items-center justify-center gap-3 active:scale-95"
+							>
+								<Share2 size={20} /> TẠO MÃ QUÀ TẶNG
+							</button>
+
+							<button
+								type="button"
+								onClick={() => handleRequestBurn(selectedItem)}
+								className="w-full py-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 transition flex items-center justify-center gap-3 active:scale-95"
+							>
+								<Flame size={20} /> NHẬN GỐI THẬT
+							</button>
+						</div>
+						<p className="mt-4 text-[10px] text-slate-400 px-4 italic">
+							Tạo mã quà tặng để chia sẻ cho người khác, hoặc chọn nhận gối thật
+							qua đường bưu điện.
+						</p>
+					</div>
+				</div>
+			)}
+
+			{/* Shipping Address Selection Modal */}
+			{shippingItem && (
+				<div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-pop-in">
+					<div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden border border-slate-100 max-h-[90vh] overflow-y-auto">
 						<button
 							type="button"
-							onClick={() => {
-								handleBurn(selectedItem);
-								setSelectedItem(null);
-							}}
-							className="w-full py-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 transition flex items-center justify-center gap-3 active:scale-95"
+							onClick={() => setShippingItem(null)}
+							className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full text-slate-400"
 						>
-							<Flame size={20} /> CHUYỂN THÀNH MÃ CODE
+							<X size={20} />
 						</button>
-						<p className="mt-4 text-[10px] text-slate-400 px-4 italic">
-							Đốt vật phẩm sẽ xóa gối khỏi túi đồ của bạn và tạo ra mã code để
-							người khác có thể nhận.
+
+						<h2 className="text-xl font-black text-slate-800 mb-1 text-center">
+							Chọn địa chỉ giao hàng
+						</h2>
+						<p className="text-xs text-slate-400 text-center mb-4">
+							Gối <span className="font-bold text-indigo-500">{shippingItem.template.name}</span>
 						</p>
+
+						{showNewAddressForm ? (
+							<ShippingForm
+								onSave={handleCreateAndSelect}
+								onCancel={() => setShowNewAddressForm(false)}
+								saveLabel="Tạo và chọn"
+								loading={newAddressLoading}
+							/>
+						) : (
+							<>
+								{shippingInfos.length > 0 ? (
+									<div className="space-y-2 mb-4">
+										{shippingInfos.map((info) => (
+											<button
+												key={info.id}
+												type="button"
+												onClick={() => setSelectedShippingId(info.id)}
+												className={`w-full text-left p-3 rounded-xl border transition ${
+													selectedShippingId === info.id
+														? "border-indigo-400 bg-indigo-50 ring-2 ring-indigo-200"
+														: "border-slate-200 bg-white hover:border-slate-300"
+												}`}
+											>
+												<div className="flex items-center gap-2">
+													<MapPin size={14} className={selectedShippingId === info.id ? "text-indigo-500" : "text-slate-400"} />
+													<p className="font-bold text-sm text-slate-800">{info.fullName}</p>
+													{user?.defaultShippingInfoId === info.id && (
+														<span className="text-[8px] bg-emerald-500 text-white px-1 py-0.5 rounded font-bold">
+															MẶC ĐỊNH
+														</span>
+													)}
+												</div>
+												<p className="text-xs text-slate-500 mt-0.5 ml-5">{info.phone}</p>
+												<p className="text-xs text-slate-400 ml-5 truncate">{info.address}</p>
+											</button>
+										))}
+									</div>
+								) : (
+									<div className="text-center py-6 text-slate-400">
+										<MapPin size={24} className="mx-auto mb-2 opacity-50" />
+										<p className="text-sm">Chưa có địa chỉ nào</p>
+									</div>
+								)}
+
+								<button
+									type="button"
+									onClick={() => setShowNewAddressForm(true)}
+									className="w-full py-2.5 border-2 border-dashed border-slate-200 text-slate-400 font-bold rounded-xl hover:border-indigo-300 hover:text-indigo-400 transition flex items-center justify-center gap-2 text-sm mb-4"
+								>
+									<Plus size={16} /> Thêm địa chỉ mới
+								</button>
+
+								<div className="flex gap-3">
+									<button
+										type="button"
+										onClick={() => setShippingItem(null)}
+										className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition"
+									>
+										Hủy
+									</button>
+									<button
+										type="button"
+										disabled={orderLoading || !selectedShippingId}
+										onClick={handleConfirmOrder}
+										className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
+									>
+										{orderLoading ? "Đang xử lý..." : "Xác nhận"}
+									</button>
+								</div>
+							</>
+						)}
 					</div>
 				</div>
 			)}

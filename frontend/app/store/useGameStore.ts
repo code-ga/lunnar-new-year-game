@@ -4,6 +4,7 @@ import { api, type SchemaType } from "../lib/api";
 interface GameState {
 	user: SchemaType["profile"] | null;
 	inventory: SchemaType["userItems"][];
+	shippingInfos: SchemaType["shippingInfo"][];
 	templates: SchemaType["items"][];
 	loading: boolean;
 	error: string | null;
@@ -19,6 +20,7 @@ interface GameState {
 export const useGameStore = create<GameState>((set, get) => ({
 	user: null,
 	inventory: [],
+	shippingInfos: [],
 	templates: [],
 	loading: false,
 	error: null,
@@ -30,10 +32,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 		set({ loading: true });
 		try {
 			const response = await api.api.profile.me.get();
-			if (!response.data?.data) {
+			if (response.data?.data) {
 				set({
 					user: response.data?.data.profile,
 					inventory: response.data?.data.inventory || [],
+					shippingInfos: response.data?.data.shippingInfos || [],
 				});
 			}
 		} catch (e) {

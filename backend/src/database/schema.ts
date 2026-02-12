@@ -87,6 +87,24 @@ export const profile = pgTable("profile", {
 	coins: integer("coins").default(0).notNull(),
 	lastCheckIn: timestamp("last_check_in"),
 
+	defaultShippingInfoId: integer("default_shipping_info_id"),
+
+	updatedAt: timestamp("updated_at")
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+});
+
+export const shippingInfo = pgTable("shipping_info", {
+	id: serial("id").primaryKey(),
+	profileId: text("profile_id")
+		.notNull()
+		.references(() => profile.id, { onDelete: "cascade" }),
+	fullName: text("full_name").notNull(),
+	phone: text("phone").notNull(),
+	address: text("address").notNull(),
+	note: text("note"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at")
 		.defaultNow()
 		.$onUpdate(() => new Date())
@@ -119,7 +137,7 @@ export const userItems = pgTable("user_items", {
 		.notNull()
 		.unique()
 		.$defaultFn(() => crypto.randomUUID()),
-	quantity: integer("quantity").default(1).notNull(),
+	// quantity: integer("quantity").default(1).notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -138,11 +156,33 @@ export const orders = pgTable("orders", {
 		.notNull()
 		.references(() => items.id, { onDelete: "cascade" }),
 	status: orderStatusEnum("status").default("pending").notNull(),
+
+	shippingInfoId: integer("shipping_info_id").references(() => shippingInfo.id, {
+		onDelete: "set null",
+	}),
+
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at")
 		.defaultNow()
 		.$onUpdate(() => new Date())
 		.notNull(),
+});
+
+export const exchanges = pgTable("exchanges", {
+	id: serial("id").primaryKey(),
+	profileId: text("profile_id")
+		.notNull()
+		.references(() => profile.id, { onDelete: "cascade" }),
+	itemId: integer("item_id")
+		.notNull()
+		.references(() => items.id, { onDelete: "cascade" }),
+	code: text("code").notNull().unique(),
+	isClaimed: boolean("is_claimed").default(false).notNull(),
+	claimedById: text("claimed_by").references(() => profile.id, {
+		onDelete: "set null",
+	}),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	claimedAt: timestamp("claimed_at"),
 });
 
 export interface AppState {
@@ -168,9 +208,11 @@ export const schema = {
 	account,
 	verification,
 	profile,
+	shippingInfo,
 	items,
 	userItems,
 	orders,
+	exchanges,
 	AppState,
 } as const;
 
@@ -181,6 +223,11 @@ export const relations = defineRelations(schema, (r) => ({
 			to: r.profile.userId,
 		}),
 		session: r.many.session({ from: r.user.id, to: r.session.userId }),
+		account: r.many.account({ from: r.user.id, to: r.account.userId }),
+		verification: r.many.verification({
+			from: r.user.id,
+			to: r.verification.identifier,
+		}),
 	},
 	profile: {
 		user: r.one.user({
@@ -195,6 +242,24 @@ export const relations = defineRelations(schema, (r) => ({
 			from: r.profile.id,
 			to: r.orders.profileId,
 		}),
+		exchanges: r.many.exchanges({
+			from: r.profile.id,
+			to: r.exchanges.profileId,
+		}),
+		shippingInfos: r.many.shippingInfo({
+			from: r.profile.id,
+			to: r.shippingInfo.profileId,
+		}),
+		defaultShippingInfo: r.one.shippingInfo({
+			from: r.profile.defaultShippingInfoId,
+			to: r.shippingInfo.id,
+		}),
+	},
+	shippingInfo: {
+		profile: r.one.profile({
+			from: r.shippingInfo.profileId,
+			to: r.profile.id,
+		}),
 	},
 	items: {
 		userItems: r.many.userItems({
@@ -204,6 +269,10 @@ export const relations = defineRelations(schema, (r) => ({
 		orders: r.many.orders({
 			from: r.items.id,
 			to: r.orders.itemId,
+		}),
+		exchanges: r.many.exchanges({
+			from: r.items.id,
+			to: r.exchanges.itemId,
 		}),
 	},
 	userItems: {
@@ -223,6 +292,24 @@ export const relations = defineRelations(schema, (r) => ({
 		}),
 		item: r.one.items({
 			from: r.orders.itemId,
+			to: r.items.id,
+		}),
+		shippingInfo: r.one.shippingInfo({
+			from: r.orders.shippingInfoId,
+			to: r.shippingInfo.id,
+		}),
+	},
+	exchanges: {
+		profile: r.one.profile({
+			from: r.exchanges.profileId,
+			to: r.profile.id,
+		}),
+		claimedBy: r.one.profile({
+			from: r.exchanges.claimedById,
+			to: r.profile.id,
+		}),
+		item: r.one.items({
+			from: r.exchanges.itemId,
 			to: r.items.id,
 		}),
 	},

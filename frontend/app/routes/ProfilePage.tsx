@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
 	User,
 	LogOut,
@@ -7,15 +7,83 @@ import {
 	CheckCircle2,
 	Coins,
 	Calendar,
+	MapPin,
+	Edit2,
+	Plus,
+	Trash2,
+	Star,
 } from "lucide-react";
 import { useGameStore } from "../store/useGameStore";
 import { Link } from "react-router";
+import { authClient } from "../lib/auth";
+import ShippingForm, { type ShippingValues } from "../components/ShippingForm";
+import { fetchApi, type SchemaType } from "../lib/api";
 
 const ProfileView: React.FC = () => {
-	const { user } = useGameStore();
+	const { user, shippingInfos, fetchUserData } = useGameStore();
+	const [editingId, setEditingId] = useState<number | "new" | null>(null);
+	const [shippingLoading, setShippingLoading] = useState(false);
 
-	const handleLogout = () => {
-		window.location.href = "/api/auth/sign-out"; // Better-auth endpoint
+	const handleLogout = async () => {
+		await authClient.signOut();
+	};
+
+	const handleSaveShipping = async (values: ShippingValues) => {
+		if (!user) return;
+		setShippingLoading(true);
+		try {
+			if (editingId === "new") {
+				await fetchApi("/api/shipping-info", {
+					method: "POST",
+					body: values,
+					credentials: "include",
+				});
+			} else if (typeof editingId === "number") {
+				await fetchApi(`/api/shipping-info/:id`, {
+					method: "PUT",
+					params: { id: editingId.toString() },
+					body: values,
+					credentials: "include",
+				});
+			}
+			await fetchUserData();
+			setEditingId(null);
+		} catch (e) {
+			alert("Lỗi khi lưu thông tin giao hàng");
+		} finally {
+			setShippingLoading(false);
+		}
+	};
+
+	const handleDeleteShipping = async (id: number) => {
+		if (!confirm("Xóa địa chỉ này?")) return;
+		try {
+			await fetchApi(`/api/shipping-info/:id`, {
+				method: "DELETE",
+				params: { id: id.toString() },
+				credentials: "include",
+			});
+			await fetchUserData();
+		} catch (e) {
+			alert("Lỗi khi xóa địa chỉ");
+		}
+	};
+
+	const handleSetDefault = async (id: number) => {
+		if (!user) return;
+		try {
+			await fetchApi("/api/profile", {
+				method: "PUT",
+				body: {
+					username: user.username,
+					defaultShippingInfoId: id,
+				},
+				credentials: "include",
+			});
+			await fetchUserData();
+		} catch (e) {
+			alert("Lỗi khi đặt địa chỉ mặc định");
+		}
 	};
 
 	if (!user) {
@@ -27,7 +95,6 @@ const ProfileView: React.FC = () => {
 					</div>
 					<h2 className="text-xl font-bold">Chưa Đăng Nhập</h2>
 					<Link
-						// onClick={() => (window.location.href = "/login")}
 						className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold"
 						to="/login"
 					>
@@ -38,9 +105,13 @@ const ProfileView: React.FC = () => {
 		);
 	}
 
+	const editingInfo = typeof editingId === "number"
+		? shippingInfos.find((s) => s.id === editingId)
+		: undefined;
+
 	return (
 		<div className="p-6 h-full flex flex-col items-center justify-center max-w-md mx-auto">
-			<div className="w-full bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100 relative overflow-hidden">
+			<div className="w-full bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100 relative">
 				<div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 -z-10 opacity-60"></div>
 
 				<div className="text-center mb-10">
@@ -88,6 +159,108 @@ const ProfileView: React.FC = () => {
 								</p>
 							</div>
 						</div>
+					</div>
+
+					{/* Shipping Info Section */}
+					<div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm">
+						<div className="flex items-center justify-between mb-3">
+							<div className="flex items-center gap-3">
+								<div className="p-2 bg-emerald-500 rounded-xl text-white shadow-lg shadow-emerald-200">
+									<MapPin size={20} />
+								</div>
+								<p className="text-[10px] uppercase font-black text-emerald-600 tracking-tight">
+									Địa chỉ giao hàng
+								</p>
+							</div>
+							{editingId === null && (
+								<button
+									type="button"
+									onClick={() => setEditingId("new")}
+									className="p-1.5 text-emerald-500 hover:bg-emerald-100 rounded-lg transition"
+								>
+									<Plus size={14} />
+								</button>
+							)}
+						</div>
+
+						{editingId !== null ? (
+							<ShippingForm
+								initialValues={
+									editingInfo
+										? {
+												fullName: editingInfo.fullName,
+												phone: editingInfo.phone,
+												address: editingInfo.address,
+												note: editingInfo.note || "",
+										  }
+										: undefined
+								}
+								onSave={handleSaveShipping}
+								onCancel={() => setEditingId(null)}
+								saveLabel={editingId === "new" ? "Thêm địa chỉ" : "Cập nhật"}
+								loading={shippingLoading}
+							/>
+						) : shippingInfos.length > 0 ? (
+							<div className="space-y-3">
+								{shippingInfos.map((info) => {
+									const isDefault = user.defaultShippingInfoId === info.id;
+									return (
+										<div
+											key={info.id}
+											className={`p-3 rounded-xl border ${isDefault ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`}
+										>
+											<div className="flex items-start justify-between">
+												<div className="space-y-0.5 text-sm flex-1">
+													<div className="flex items-center gap-2">
+														<p className="font-bold text-slate-800">{info.fullName}</p>
+														{isDefault && (
+															<span className="text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded font-bold uppercase">
+																Mặc định
+															</span>
+														)}
+													</div>
+													<p className="text-slate-600">{info.phone}</p>
+													<p className="text-slate-500 text-xs">{info.address}</p>
+													{info.note && (
+														<p className="text-slate-400 italic text-xs">{info.note}</p>
+													)}
+												</div>
+												<div className="flex items-center gap-1 shrink-0 ml-2">
+													{!isDefault && (
+														<button
+															type="button"
+															onClick={() => handleSetDefault(info.id)}
+															className="p-1.5 text-slate-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-lg transition"
+															title="Đặt làm mặc định"
+														>
+															<Star size={12} />
+														</button>
+													)}
+													<button
+														type="button"
+														onClick={() => setEditingId(info.id)}
+														className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition"
+													>
+														<Edit2 size={12} />
+													</button>
+													<button
+														type="button"
+														onClick={() => handleDeleteShipping(info.id)}
+														className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+													>
+														<Trash2 size={12} />
+													</button>
+												</div>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						) : (
+							<p className="text-sm text-slate-400 italic">
+								Chưa có địa chỉ giao hàng. Nhấn + để thêm.
+							</p>
+						)}
 					</div>
 
 					<div className="pt-6">

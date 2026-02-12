@@ -123,32 +123,40 @@ export const gameRouter = new Elysia({ prefix: "/game" })
 								.set({ coins: profile.coins - COST })
 								.where(eq(schema.profile.id, profile.id));
 
-							const [existing] = await tx
-								.select()
-								.from(schema.userItems)
-								.where(
-									and(
-										eq(schema.userItems.profileId, profile.id),
-										eq(schema.userItems.itemId, rolledItem.id),
-									),
-								);
+							// const [existing] = await tx
+							// 	.select()
+							// 	.from(schema.userItems)
+							// 	.where(
+							// 		and(
+							// 			eq(schema.userItems.profileId, profile.id),
+							// 			eq(schema.userItems.itemId, rolledItem.id),
+							// 		),
+							// 	);
 
-							if (existing) {
-								return await tx
-									.update(schema.userItems)
-									.set({ quantity: existing.quantity + 1 })
-									.where(eq(schema.userItems.id, existing.id))
-									.returning();
-							} else {
-								return await tx
-									.insert(schema.userItems)
-									.values({
-										profileId: profile.id,
-										itemId: rolledItem.id,
-										quantity: 1,
-									})
-									.returning();
-							}
+							// if (existing) {
+							// 	return await tx
+							// 		.update(schema.userItems)
+							// 		.set({ quantity: existing.quantity + 1 })
+							// 		.where(eq(schema.userItems.id, existing.id))
+							// 		.returning();
+							// } else {
+							// 	return await tx
+							// 		.insert(schema.userItems)
+							// 		.values({
+							// 			profileId: profile.id,
+							// 			itemId: rolledItem.id,
+							// 			quantity: 1,
+							// 		})
+							// 		.returning();
+							// }
+							// always insert a new user item
+							return await tx
+								.insert(schema.userItems)
+								.values({
+									profileId: profile.id,
+									itemId: rolledItem.id,
+								})
+								.returning();
 						});
 						if (!userItems) throw new Error("Failed to update inventory");
 

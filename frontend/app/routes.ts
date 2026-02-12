@@ -14,5 +14,6 @@ export default [
 		route("profile", "routes/ProfilePage.tsx"),
 		route("collection", "routes/CollectionPage.tsx"),
 		route("exchange", "routes/ExchangePage.tsx"),
+		route("games", "routes/GamesPage.tsx"),
 	]),
 ] satisfies RouteConfig;

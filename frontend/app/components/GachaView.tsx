@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useGameStore } from "../store/useGameStore";
 import { Gift, Sparkles } from "lucide-react";
-import { BACKEND_URL, GACHA_COST, RARITY_CONFIG } from "../constants";
+import { GACHA_COST, RARITY_CONFIG } from "../constants";
 // import type { InventoryItem } from "../types";
 import { fetchApi, type SchemaType } from "../lib/api";
 
@@ -73,7 +73,17 @@ const GachaView: React.FC = () => {
 						<div
 							className={`z-10 w-24 h-24 rounded-full shadow-inner ${config.color} flex items-center justify-center text-white font-black text-3xl ${isEx ? "ex-gradient" : ""}`}
 						>
-							{result.rarity}
+							{result.image?.startsWith("http") ? (
+								<img
+									src={result.image}
+									alt={result.name}
+									className="w-24 h-24 object-cover rounded-full"
+								/>
+							) : typeof result.image === "string" ? (
+								<div className="text-5xl">{result.image}</div>
+							) : (
+								result.name
+							)}
 						</div>
 						<div className="z-10 w-full flex flex-col items-center">
 							<span
@@ -150,7 +160,8 @@ const GachaView: React.FC = () => {
 			<div className="bg-white/50 backdrop-blur-sm p-3 rounded-2xl border border-indigo-50 flex items-center gap-2">
 				<Sparkles size={16} className="text-indigo-400" />
 				<span className="text-slate-500 text-sm font-medium">
-					Hệ thống gacha công bằng - Tỉ lệ EX 0.1%
+					{/* Hệ thống gacha công bằng - Tỉ lệ EX 0.1% */}
+					Bạn có {currentCoins.toLocaleString()} Xu
 				</span>
 			</div>
 		</div>
