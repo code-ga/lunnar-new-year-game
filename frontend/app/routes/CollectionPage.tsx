@@ -165,6 +165,11 @@ const CollectionView: React.FC = () => {
 			isActive: true,
 			createdAt: new Date(),
 			updatedAt: new Date(),
+			isEx: false,
+			adminNote: "",
+			quantity: -1,
+			groupId: null,
+			manualChance: null,
 		} as SchemaType["items"];
 	};
 
@@ -323,13 +328,14 @@ const CollectionView: React.FC = () => {
 								<Share2 size={20} /> TẠO MÃ QUÀ TẶNG
 							</button>
 
-							<button
-								type="button"
-								onClick={() => handleRequestBurn(selectedItem)}
-								className="w-full py-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 transition flex items-center justify-center gap-3 active:scale-95"
-							>
-								<Flame size={20} /> NHẬN GỐI THẬT
-							</button>
+							{selectedItem.template.isEx && (
+								<button
+									type="button"
+									onClick={() => handleRequestBurn(selectedItem)}
+									className="w-full py-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 transition flex items-center justify-center gap-3 active:scale-95"
+								>
+									<Flame size={20} /> NHẬN GỐI THẬT
+							</button>}
 						</div>
 						<p className="mt-4 text-[10px] text-slate-400 px-4 italic">
 							Tạo mã quà tặng để chia sẻ cho người khác, hoặc chọn nhận gối thật

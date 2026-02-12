@@ -21,18 +21,36 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 						const { userItemId, shippingInfoId } = body;
 
 						// Check if user has the item
-						const [existing] = await db
-							.select()
-							.from(userItems)
-							.where(
-								and(
-									eq(userItems.profileId, profile.id),
-									eq(userItems.id, userItemId),
-								),
-							);
+						// const [existing] = await db
+						// 	.select()
+						// 	.from(userItems)
+						// 	.where(
+						// 		and(
+						// 			eq(userItems.profileId, profile.id),
+						// 			eq(userItems.id, userItemId),
+						// 		),
+						// 	);
+						const existing = await db.query.userItems.findFirst({
+							where: {
+								id: userItemId,
+								profileId: profile.id,
+							},
+							with: {
+								item: true,
+							},
+						});
 
 						if (!existing) {
 							throw new Error("Item not found in inventory");
+						}
+						if (!existing.item) {
+							throw new Error("Item not found");
+						}
+						if (!existing.item.isActive) {
+							throw new Error("Item is not available for order");
+						}
+						if (!existing.item.isEx) {
+							throw new Error("Item is not eligible for burn");
 						}
 
 						await db.transaction(async (tx) => {
