@@ -13,23 +13,45 @@ export const itemsRouter = new Elysia({ prefix: "/items" })
 		async (ctx) => {
 			return ctx.status(200, {
 				success: true,
-				data: await db.select().from(items).where(eq(items.isActive, true)),
+				data: await db.query.items.findMany({
+					where: {
+						isActive: true,
+					},
+					with: {
+						group: true,
+					},
+				}),
 				timestamp: Date.now(),
 			});
 		},
 		{
 			response: {
-				200: baseResponseSchema(Type.Array(Type.Object(dbSchemaTypes.items))),
+				200: baseResponseSchema(
+					Type.Array(
+						Type.Object({
+							...dbSchemaTypes.items,
+							group: Type.Union([
+								Type.Object(dbSchemaTypes.itemGroups),
+								Type.Null(),
+								Type.Undefined(),
+							]),
+						}),
+					),
+				),
 			},
 		},
 	)
 	.get(
 		"/:id",
 		async ({ params: { id }, status }) => {
-			const [item] = await db
-				.select()
-				.from(items)
-				.where(eq(items.id, parseInt(id)));
+			const item = await db.query.items.findFirst({
+				where: {
+					id: parseInt(id),
+				},
+				with: {
+					group: true,
+				},
+			});
 			return status(200, {
 				success: true,
 				data: item,
@@ -40,7 +62,16 @@ export const itemsRouter = new Elysia({ prefix: "/items" })
 			params: t.Object({ id: t.String() }),
 			response: {
 				200: baseResponseSchema(
-					Type.Optional(Type.Object(dbSchemaTypes.items)),
+					Type.Optional(
+						Type.Object({
+							...dbSchemaTypes.items,
+							group: Type.Union([
+								Type.Object(dbSchemaTypes.itemGroups),
+								Type.Null(),
+								Type.Undefined(),
+							]),
+						}),
+					),
 				),
 			},
 		},
@@ -52,10 +83,7 @@ export const itemsRouter = new Elysia({ prefix: "/items" })
 				.select()
 				.from(items)
 				.where(
-					and(
-						eq(items.groupId, parseInt(groupId)),
-						eq(items.isActive, true),
-					),
+					and(eq(items.groupId, parseInt(groupId)), eq(items.isActive, true)),
 				);
 			return status(200, {
 				success: true,

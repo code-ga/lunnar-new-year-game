@@ -5,7 +5,9 @@ interface GameState {
 	user: SchemaType["profile"] | null;
 	inventory: SchemaType["userItems"][];
 	shippingInfos: SchemaType["shippingInfo"][];
-	templates: SchemaType["items"][];
+	templates: (SchemaType["items"] & {
+		group?: SchemaType["itemGroups"] | null;
+	})[];
 	loading: boolean;
 	error: string | null;
 

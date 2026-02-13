@@ -17,7 +17,7 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 			app
 				.post(
 					"/",
-					async ({ profile, body }) => {
+					async ({ profile, body, status }) => {
 						const { userItemId, shippingInfoId } = body;
 
 						// Check if user has the item
@@ -36,7 +36,9 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 								profileId: profile.id,
 							},
 							with: {
-								item: true,
+								item: {
+									with: { group: true },
+								},
 							},
 						});
 
@@ -49,11 +51,11 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 						if (!existing.item.isActive) {
 							throw new Error("Item is not available for order");
 						}
-						if (!existing.item.isEx) {
+						if (!(existing.item.isEx || existing.item.group?.isEx)) {
 							throw new Error("Item is not eligible for burn");
 						}
 
-						await db.transaction(async (tx) => {
+						const [order] = await db.transaction(async (tx) => {
 							await tx.delete(userItems).where(eq(userItems.id, existing.id));
 							return await tx
 								.insert(orders)
@@ -66,14 +68,22 @@ export const ordersRouter = new Elysia({ prefix: "/orders" })
 								.returning();
 						});
 
-						return { success: true };
+						if (!order) {
+							throw new Error("Failed to create order");
+						}
+
+						return status(200, {
+							success: true,
+							data: order,
+							timestamp: Date.now(),
+						});
 					},
 					{
 						body: t.Object({
 							userItemId: t.Number(),
 							shippingInfoId: t.Optional(t.Number()),
 						}),
-						response: t.Object({ success: t.Boolean() }),
+						response: baseResponseSchema(t.Object({ ...dbSchemaTypes.orders })),
 					},
 				)
 				.get(

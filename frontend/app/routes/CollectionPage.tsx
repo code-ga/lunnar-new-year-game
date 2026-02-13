@@ -1,5 +1,14 @@
 import React, { useState, useEffect, Suspense } from "react";
-import { Flame, Check, Copy, X, Lock, Share2, MapPin, Plus } from "lucide-react";
+import {
+	Flame,
+	Check,
+	Copy,
+	X,
+	Lock,
+	Share2,
+	MapPin,
+	Plus,
+} from "lucide-react";
 import { useSearchParams, Link } from "react-router";
 import { getItemDisplayConfig } from "../constants";
 import { useGameStore } from "../store/useGameStore";
@@ -7,14 +16,20 @@ import { fetchApi, type SchemaType } from "../lib/api";
 import ShippingForm, { type ShippingValues } from "../components/ShippingForm";
 
 const CollectionView: React.FC = () => {
-	const { inventory, templates, fetchUserData, fetchTemplates, user, shippingInfos } =
-		useGameStore();
+	const {
+		inventory,
+		templates,
+		fetchUserData,
+		fetchTemplates,
+		user,
+		shippingInfos,
+	} = useGameStore();
 	const [searchParams] = useSearchParams();
 	const [subTab, setSubTab] = useState<"inventory" | "catalog">(
 		searchParams.get("tab") === "catalog" ? "catalog" : "inventory",
 	);
 	const [selectedItem, setSelectedItem] = useState<{
-		template: SchemaType["items"];
+		template: SchemaType["items"] & { group?: SchemaType["itemGroups"] | null };
 		userItem: SchemaType["userItems"];
 	} | null>(null);
 	const [burnedCode, setBurnedCode] = useState<{
@@ -26,7 +41,9 @@ const CollectionView: React.FC = () => {
 		userItem: SchemaType["userItems"];
 	} | null>(null);
 	const [orderLoading, setOrderLoading] = useState(false);
-	const [selectedShippingId, setSelectedShippingId] = useState<number | null>(null);
+	const [selectedShippingId, setSelectedShippingId] = useState<number | null>(
+		null,
+	);
 	const [showNewAddressForm, setShowNewAddressForm] = useState(false);
 	const [newAddressLoading, setNewAddressLoading] = useState(false);
 
@@ -63,8 +80,8 @@ const CollectionView: React.FC = () => {
 				credentials: "include",
 			});
 
-			if (res.data?.success) {
-				const fullCode = `PIL-${shippingItem.template.id}-${shippingItem.template.rarity}-${shippingItem.userItem.uniqueId}`;
+			if (res.data?.success && res.data.data) {
+				const fullCode = `PIL-${shippingItem.template.id}-${shippingItem.template.rarity}-${res.data.data.id}`;
 				const maskedCode = `PIL-${shippingItem.template.id}-${shippingItem.template.rarity}-******`;
 
 				setShippingItem(null);
@@ -150,7 +167,9 @@ const CollectionView: React.FC = () => {
 				params: { id: itemId.toString() },
 			});
 			if (res.data?.data) {
-				return res.data.data as SchemaType["items"];
+				return res.data.data as SchemaType["items"] & {
+					group?: SchemaType["itemGroups"] | null;
+				};
 			}
 		} catch (e) {
 			console.error("Lỗi khi lấy thông tin vật phẩm:", e);
@@ -170,7 +189,7 @@ const CollectionView: React.FC = () => {
 			quantity: -1,
 			groupId: null,
 			manualChance: null,
-		} as SchemaType["items"];
+		} as SchemaType["items"] & { group?: SchemaType["itemGroups"] | null };
 	};
 
 	const copyToClipboard = (text: string) => {
@@ -213,8 +232,7 @@ const CollectionView: React.FC = () => {
 								{inventory.map(async (item) => {
 									const template = await getItemTemplate(item.itemId);
 									const config = getItemDisplayConfig(template);
-									const isEx =
-										template.isEx || (template as any).group?.isEx;
+									const isEx = template.isEx || template.group?.isEx;
 									return (
 										<button
 											type="button"
@@ -303,8 +321,8 @@ const CollectionView: React.FC = () => {
 						<div
 							className={`inline-block px-3 py-1 rounded-full text-xs font-black text-white ${getItemDisplayConfig(selectedItem.template).color || "bg-slate-500"} mb-6`}
 						>
-							{(selectedItem.template as any).group?.name ||
-							selectedItem.template.rarity}
+							{selectedItem.template.group?.name ||
+								selectedItem.template.rarity}
 						</div>
 
 						<div className="p-6 bg-slate-50 rounded-2xl mb-8 border border-slate-200">
@@ -328,14 +346,16 @@ const CollectionView: React.FC = () => {
 								<Share2 size={20} /> TẠO MÃ QUÀ TẶNG
 							</button>
 
-							{selectedItem.template.isEx && (
+							{(selectedItem.template.isEx ||
+								selectedItem.template.group?.isEx) && (
 								<button
 									type="button"
 									onClick={() => handleRequestBurn(selectedItem)}
 									className="w-full py-4 bg-red-50 text-red-600 font-black rounded-2xl hover:bg-red-100 transition flex items-center justify-center gap-3 active:scale-95"
 								>
 									<Flame size={20} /> NHẬN GỐI THẬT
-							</button>}
+								</button>
+							)}
 						</div>
 						<p className="mt-4 text-[10px] text-slate-400 px-4 italic">
 							Tạo mã quà tặng để chia sẻ cho người khác, hoặc chọn nhận gối thật
@@ -361,7 +381,10 @@ const CollectionView: React.FC = () => {
 							Chọn địa chỉ giao hàng
 						</h2>
 						<p className="text-xs text-slate-400 text-center mb-4">
-							Gối <span className="font-bold text-indigo-500">{shippingItem.template.name}</span>
+							Gối{" "}
+							<span className="font-bold text-indigo-500">
+								{shippingItem.template.name}
+							</span>
 						</p>
 
 						{showNewAddressForm ? (
@@ -387,16 +410,29 @@ const CollectionView: React.FC = () => {
 												}`}
 											>
 												<div className="flex items-center gap-2">
-													<MapPin size={14} className={selectedShippingId === info.id ? "text-indigo-500" : "text-slate-400"} />
-													<p className="font-bold text-sm text-slate-800">{info.fullName}</p>
+													<MapPin
+														size={14}
+														className={
+															selectedShippingId === info.id
+																? "text-indigo-500"
+																: "text-slate-400"
+														}
+													/>
+													<p className="font-bold text-sm text-slate-800">
+														{info.fullName}
+													</p>
 													{user?.defaultShippingInfoId === info.id && (
 														<span className="text-[8px] bg-emerald-500 text-white px-1 py-0.5 rounded font-bold">
 															MẶC ĐỊNH
 														</span>
 													)}
 												</div>
-												<p className="text-xs text-slate-500 mt-0.5 ml-5">{info.phone}</p>
-												<p className="text-xs text-slate-400 ml-5 truncate">{info.address}</p>
+												<p className="text-xs text-slate-500 mt-0.5 ml-5">
+													{info.phone}
+												</p>
+												<p className="text-xs text-slate-400 ml-5 truncate">
+													{info.address}
+												</p>
 											</button>
 										))}
 									</div>
