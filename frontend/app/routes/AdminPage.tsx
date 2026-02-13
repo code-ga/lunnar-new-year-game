@@ -112,7 +112,7 @@ const AdminPage: React.FC = () => {
 				method: "PATCH",
 				credentials: "include",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(pityConfig),
+				body: pityConfig,
 			});
 			if (res.data?.success) {
 				alert("Cài đặt pity đã được lưu!");

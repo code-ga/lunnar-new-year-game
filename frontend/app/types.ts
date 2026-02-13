@@ -1,4 +1,4 @@
-// import type { SchemaType } from "./lib/api";
+import type { SchemaType } from "./lib/api";
 
 export type Rarity = "E" | "D" | "C" | "B" | "A" | "S" | "SS" | "SSS" | "EX"; // DEPRECATED
 
@@ -9,15 +9,7 @@ export interface RarityConfig {
 	value: number;
 }
 
-export interface ItemGroup {
-	id: number;
-	name: string;
-	baseChance: number;
-	isEx: boolean;
-	isActive: boolean;
-	createdAt: string;
-	updatedAt: string;
-}
+export type ItemGroup = SchemaType["itemGroups"];
 
 export interface GroupConfig {
 	color: string;
