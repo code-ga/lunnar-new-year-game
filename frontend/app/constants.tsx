@@ -57,23 +57,6 @@ export const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
 	},
 };
 
-// export const PILLOW_TEMPLATES: PillowTemplate[] = [
-//   { id: 1, name: "Gối Bông Gòn", rarity: "E" },
-//   { id: 2, name: "Gối Len Cũ", rarity: "E" },
-//   { id: 3, name: "Gối Kê Cổ", rarity: "D" },
-//   { id: 4, name: "Gối Ôm Dài", rarity: "D" },
-//   { id: 5, name: "Lông Vũ Mềm", rarity: "C" },
-//   { id: 6, name: "Cao Su Non", rarity: "C" },
-//   { id: 7, name: "Gel Mát Lạnh", rarity: "B" },
-//   { id: 8, name: "Khách Sạn 5 Sao", rarity: "B" },
-//   { id: 9, name: "Vỏ Lụa Tơ Tằm", rarity: "A" },
-//   { id: 10, name: "Dakimakura", rarity: "A" },
-//   { id: 11, name: "Lông Ngỗng", rarity: "S" },
-//   { id: 12, name: "Chỉ Vàng Kim", rarity: "SS" },
-//   { id: 13, name: "Nhung Hoàng Gia", rarity: "SSS" },
-//   { id: 14, name: "Giấc Mơ Vũ Trụ", rarity: "EX" },
-// ];
-
 export const GROUP_CONFIG: Record<string, GroupConfig> = {
 	"Common (E-D)": {
 		color: "bg-slate-400",
@@ -113,5 +96,5 @@ export const getItemDisplayConfig = (item: any) => {
 
 export const GACHA_COST = 100;
 export const DAILY_REWARD = 500;
-export const BACKEND_URL = "http://localhost:3001";
-export const LOGIN_REDIRECT_URL = "http://localhost:5173/";
+export const BACKEND_URL = "https://cac-api.lormas.studio";
+export const LOGIN_REDIRECT_URL = "https://cac.lormas.studio";

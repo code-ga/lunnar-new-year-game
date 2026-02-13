@@ -17,19 +17,6 @@ export interface GroupConfig {
 	gradient?: string;
 }
 
-// export interface PillowTemplate {
-//   id: number;
-//   name: string;
-//   rarity: Rarity;
-// }
-
-// export interface InventoryItem extends PillowTemplate {
-//   uniqueId: string;
-//   obtainedAt: number;
-// }
-
-// export type InventoryItem = SchemaType["items"] & SchemaType["userItems"];
-
 export type AppTab = "gacha" | "collection" | "games" | "exchange" | "profile";
 
 export type GameId = "flappy" | "race" | "taixiu" | "baucua" | null;
