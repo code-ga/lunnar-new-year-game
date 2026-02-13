@@ -15,7 +15,7 @@ export const app = new Elysia()
 			credentials: true,
 		}),
 	)
-	.get("/", () => ({ hello: "Bun👋" }))
+	.get("/", () => ({ lormas: "studio" }))
 	.use(
 		openapi({
 			documentation: {
@@ -26,9 +26,9 @@ export const app = new Elysia()
 	)
 	.use(appStateService)
 	.use(apiRouter)
-	.listen(3001);
+	.listen(3000);
 
-console.log(`Listening on ${app.server?.url}`);
+console.log(`${app.server?.url} is now running!`);
 
 export type App = typeof app;
 export * as databaseTypes from "./database/type";

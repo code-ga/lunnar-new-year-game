@@ -1,1 +1,1 @@
-export const FRONTEND_URLs = ["http://localhost:3000", "http://localhost:5173"];
+export const FRONTEND_URLs = ["https://cac.lormas.studio", "https://cac-api.lormas.studio"];
